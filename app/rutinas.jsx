@@ -10,6 +10,7 @@ import {
   TouchableOpacity,
   View,
 } from "react-native";
+import { CategoriaGrid } from "../src/components/CategoriaGrid";
 import { colors } from "../src/constants/colors.js";
 import { useRutinas } from "../src/hooks/useRutinas";
 
@@ -189,39 +190,11 @@ export default function RutinasScreen() {
             )}
 
             <Text style={styles.label}>Categoría</Text>
-            <View style={styles.categoriasGrid}>
-              {categorias.map((c) => {
-                const cfg = categoriaConfig[c];
-                const activa = categoria === c;
-                return (
-                  <TouchableOpacity
-                    key={c}
-                    style={[
-                      styles.categoriaBtn,
-                      activa && {
-                        backgroundColor: cfg.color + "33",
-                        borderColor: cfg.color,
-                      },
-                    ]}
-                    onPress={() => setCategoria(c)}
-                  >
-                    <Ionicons
-                      name={cfg.icon}
-                      size={16}
-                      color={activa ? cfg.color : colors.textMuted}
-                    />
-                    <Text
-                      style={[
-                        styles.categoriaBtnText,
-                        activa && { color: cfg.color },
-                      ]}
-                    >
-                      {c}
-                    </Text>
-                  </TouchableOpacity>
-                );
-              })}
-            </View>
+            <CategoriaGrid
+              opciones={categoriaConfig}
+              seleccionada={categoria}
+              onSeleccionar={setCategoria}
+            />
 
             <TouchableOpacity style={styles.boton} onPress={handleAgregar}>
               <Text style={styles.botonText}>Guardar rutina</Text>
@@ -349,24 +322,8 @@ const styles = StyleSheet.create({
     gap: 10,
   },
   horaBtnText: { color: colors.text, fontSize: 16, fontWeight: "500" },
-  categoriasGrid: {
-    flexDirection: "row",
-    flexWrap: "wrap",
-    gap: 8,
-    marginBottom: 16,
-  },
-  categoriaBtn: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 6,
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-    borderRadius: 20,
-    backgroundColor: colors.input,
-    borderWidth: 1,
-    borderColor: "transparent",
-  },
-  categoriaBtnText: { color: colors.textMuted, fontSize: 12 },
+  // categoriasGrid, categoriaBtn y categoriaBtnText
+  // fueron movidos a src/components/CategoriaGrid.jsx
   boton: {
     backgroundColor: colors.primary,
     padding: 16,

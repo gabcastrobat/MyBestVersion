@@ -1,8 +1,23 @@
 import AsyncStorage from "@react-native-async-storage/async-storage";
 
 const KEY = "rutinas";
+const KEY_FECHA = "rutinas_ultima_fecha";
 
-// Trae todas las rutinas guardadas
+// Revisa si cambió el día y reinicia las rutinas si es necesario
+export async function resetDiarioSiNecesario() {
+  const hoy = new Date().toDateString(); // ej: "Thu May 29 2026"
+  const ultimaFecha = await AsyncStorage.getItem(KEY_FECHA);
+
+  if (ultimaFecha !== hoy) {
+    // Es un día nuevo: poner todas las rutinas en no completadas
+    const rutinas = await getRutinas();
+    const reiniciadas = rutinas.map((r) => ({ ...r, completada: false }));
+    await AsyncStorage.setItem(KEY, JSON.stringify(reiniciadas));
+    await AsyncStorage.setItem(KEY_FECHA, hoy);
+  }
+}
+
+
 export async function getRutinas() {
   const data = await AsyncStorage.getItem(KEY);
   return data ? JSON.parse(data) : [];

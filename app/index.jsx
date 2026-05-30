@@ -68,7 +68,7 @@ export default function HomeScreen() {
       <View style={styles.progresoCard}>
         <View style={styles.progresoHeader}>
           <Text style={styles.progresoTitulo}>Progreso del día</Text>
-          <Text style={styles.progrесoPct}>{Math.round(progreso * 100)}%</Text>
+          <Text style={styles.progrеsoPct}>{Math.round(progreso * 100)}%</Text>
         </View>
         <View style={styles.progresoBar}>
           <View
@@ -232,7 +232,7 @@ const styles = StyleSheet.create({
     marginBottom: 12,
   },
   progresoTitulo: { fontSize: 14, fontWeight: "600", color: colors.text },
-  progrесoPct: { fontSize: 20, fontWeight: "700", color: colors.success },
+  progresoPct: { fontSize: 20, fontWeight: "700", color: colors.success },
   progresoBar: {
     height: 6,
     backgroundColor: colors.input,

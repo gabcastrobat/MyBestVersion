@@ -1,11 +1,18 @@
 import { Ionicons } from "@expo/vector-icons";
 import { Tabs } from "expo-router";
 import { useEffect } from "react";
-import { pedirPermisos } from "../src/storage/notificaciones";
+import {
+  pedirPermisos,
+  setupNotificationListeners,
+} from "../src/storage/notificaciones";
 
 export default function RootLayout() {
   useEffect(() => {
     pedirPermisos();
+    const unsubscribe = setupNotificationListeners();
+    return () => {
+      if (unsubscribe) unsubscribe();
+    };
   }, []);
 
   return (
@@ -49,6 +56,15 @@ export default function RootLayout() {
               size={size}
               color={color}
             />
+          ),
+        }}
+      />
+      <Tabs.Screen
+        name="gastos"
+        options={{
+          title: "Gastos",
+          tabBarIcon: ({ color, size }) => (
+            <Ionicons name="wallet-outline" size={size} color={color} />
           ),
         }}
       />
