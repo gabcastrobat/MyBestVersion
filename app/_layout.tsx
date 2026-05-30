@@ -1,24 +1,66 @@
-import { DarkTheme, DefaultTheme, ThemeProvider } from '@react-navigation/native';
-import { Stack } from 'expo-router';
-import { StatusBar } from 'expo-status-bar';
-import 'react-native-reanimated';
-
-import { useColorScheme } from '@/hooks/use-color-scheme';
-
-export const unstable_settings = {
-  anchor: '(tabs)',
-};
+import { Ionicons } from "@expo/vector-icons";
+import { Tabs } from "expo-router";
+import { useEffect } from "react";
+import { pedirPermisos } from "../src/storage/notificaciones";
 
 export default function RootLayout() {
-  const colorScheme = useColorScheme();
+  useEffect(() => {
+    pedirPermisos();
+  }, []);
 
   return (
-    <ThemeProvider value={colorScheme === 'dark' ? DarkTheme : DefaultTheme}>
-      <Stack>
-        <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
-        <Stack.Screen name="modal" options={{ presentation: 'modal', title: 'Modal' }} />
-      </Stack>
-      <StatusBar style="auto" />
-    </ThemeProvider>
+    <Tabs
+      screenOptions={{
+        tabBarStyle: {
+          backgroundColor: "#0f0f0f",
+          borderTopColor: "#222222",
+        },
+        tabBarActiveTintColor: "#ffffff",
+        tabBarInactiveTintColor: "#555555",
+        headerStyle: { backgroundColor: "#0f0f0f" },
+        headerTintColor: "#ffffff",
+      }}
+    >
+      <Tabs.Screen
+        name="index"
+        options={{
+          title: "Home",
+          tabBarIcon: ({ color, size }) => (
+            <Ionicons name="home-outline" size={size} color={color} />
+          ),
+        }}
+      />
+      <Tabs.Screen
+        name="rutinas"
+        options={{
+          title: "Rutinas",
+          tabBarIcon: ({ color, size }) => (
+            <Ionicons name="repeat-outline" size={size} color={color} />
+          ),
+        }}
+      />
+      <Tabs.Screen
+        name="tareas"
+        options={{
+          title: "Tareas",
+          tabBarIcon: ({ color, size }) => (
+            <Ionicons
+              name="checkmark-circle-outline"
+              size={size}
+              color={color}
+            />
+          ),
+        }}
+      />
+      <Tabs.Screen
+        name="perfil"
+        options={{
+          title: "Perfil",
+          tabBarIcon: ({ color, size }) => (
+            <Ionicons name="person-outline" size={size} color={color} />
+          ),
+        }}
+      />
+    </Tabs>
   );
 }
