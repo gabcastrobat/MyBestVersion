@@ -1,4 +1,5 @@
-import { useEffect, useState } from "react";
+import { useFocusEffect } from "expo-router";
+import { useCallback, useState } from "react";
 import { getPerfil, savePerfil } from "../storage/perfil";
 
 export function usePerfil() {
@@ -10,15 +11,20 @@ export function usePerfil() {
   });
   const [cargando, setCargando] = useState(true);
 
-  useEffect(() => {
-    cargar();
-  }, []);
-
-  async function cargar() {
-    const data = await getPerfil();
-    setPerfil(data);
-    setCargando(false);
-  }
+  useFocusEffect(
+    useCallback(() => {
+      let activo = true;
+      getPerfil().then((data) => {
+        if (activo) {
+          setPerfil(data);
+          setCargando(false);
+        }
+      });
+      return () => {
+        activo = false;
+      };
+    }, []),
+  );
 
   async function guardar(datos) {
     const actualizado = await savePerfil(datos);

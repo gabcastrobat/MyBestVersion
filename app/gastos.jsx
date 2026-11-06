@@ -1,17 +1,19 @@
 import { Ionicons } from "@expo/vector-icons";
-import { useFocusEffect } from "expo-router";
-import { useCallback, useState } from "react";
+import { useState } from "react";
 import {
   FlatList,
+  KeyboardAvoidingView,
   Modal,
+  Platform,
   StyleSheet,
   Text,
   TextInput,
   TouchableOpacity,
   View,
 } from "react-native";
+import { GastosPorCategoria } from "../src/components/GastosPorCategoria";
 import { colors } from "../src/constants/colors.js";
-import { deleteGasto, getGastos, saveGasto } from "../src/storage/gastos";
+import { useGastos } from "../src/hooks/useGastos";
 
 const categoriaConfig = {
   Comida: { icon: "fast-food-outline", color: "#ff6b6b" },
@@ -81,27 +83,22 @@ function esMismoMes(fecha) {
 }
 
 export default function GastosScreen() {
-  const [gastos, setGastos] = useState([]);
+  const { gastos, agregar, eliminar } = useGastos();
   const [modalVisible, setModalVisible] = useState(false);
   const [descripcion, setDescripcion] = useState("");
   const [monto, setMonto] = useState("");
   const [categoria, setCategoria] = useState("Comida");
   const [vista, setVista] = useState("Hoy");
 
-  useFocusEffect(
-    useCallback(() => {
-      async function cargar() {
-        const data = await getGastos();
-        setGastos(data);
-      }
-      cargar();
-    }, []),
+  // Acepta "15.000", "15000" o "15000,50"
+  const montoNumero = parseFloat(
+    monto.replace(/\./g, "").replace(",", "."),
   );
+  const montoValido = Number.isFinite(montoNumero) && montoNumero > 0;
 
   async function handleAgregar() {
-    if (!descripcion.trim() || !monto.trim()) return;
-    const nuevo = await saveGasto({ descripcion, monto, categoria });
-    setGastos((prev) => [...prev, nuevo]);
+    if (!descripcion.trim() || !montoValido) return;
+    await agregar({ descripcion: descripcion.trim(), monto: montoNumero, categoria });
     setDescripcion("");
     setMonto("");
     setCategoria("Comida");
@@ -109,8 +106,7 @@ export default function GastosScreen() {
   }
 
   async function handleEliminar(id) {
-    const filtrados = await deleteGasto(id);
-    setGastos(filtrados);
+    await eliminar(id);
   }
 
   const hoy = new Date();
@@ -147,20 +143,30 @@ export default function GastosScreen() {
         ))}
       </View>
 
-      {/* Total */}
-      <View style={styles.totalCard}>
-        <Text style={styles.totalLabel}>Total {vista.toLowerCase()}</Text>
-        <Text style={styles.totalMonto}>${total.toLocaleString("es-CO")}</Text>
-        <Text style={styles.totalSub}>
-          {gastosFiltrados.length} gastos registrados
-        </Text>
-      </View>
-
-      {/* Lista */}
+      {/* Lista (el total y el gráfico van en el header para que hagan scroll) */}
       <FlatList
         data={[...gastosFiltrados].reverse()}
         keyExtractor={(item) => item.id}
         contentContainerStyle={styles.lista}
+        ListHeaderComponent={
+          <>
+            <View style={styles.totalCard}>
+              <Text style={styles.totalLabel}>
+                Total {vista.toLowerCase()}
+              </Text>
+              <Text style={styles.totalMonto}>
+                ${total.toLocaleString("es-CO")}
+              </Text>
+              <Text style={styles.totalSub}>
+                {gastosFiltrados.length} gastos registrados
+              </Text>
+            </View>
+            <GastosPorCategoria
+              gastos={gastosFiltrados}
+              config={categoriaConfig}
+            />
+          </>
+        }
         ListEmptyComponent={
           <View style={styles.emptyBox}>
             <Ionicons
@@ -215,8 +221,16 @@ export default function GastosScreen() {
         <Text style={styles.fabText}>Nuevo gasto</Text>
       </TouchableOpacity>
 
-      <Modal visible={modalVisible} transparent animationType="slide">
-        <View style={styles.modalOverlay}>
+      <Modal
+        visible={modalVisible}
+        transparent
+        animationType="slide"
+        onRequestClose={() => setModalVisible(false)}
+      >
+        <KeyboardAvoidingView
+          style={styles.modalOverlay}
+          behavior={Platform.OS === "ios" ? "padding" : undefined}
+        >
           <View style={styles.modal}>
             <Text style={styles.modalTitulo}>Nuevo Gasto</Text>
 
@@ -272,14 +286,20 @@ export default function GastosScreen() {
               })}
             </View>
 
-            <TouchableOpacity style={styles.boton} onPress={handleAgregar}>
+            <TouchableOpacity
+              style={[
+                styles.boton,
+                (!descripcion.trim() || !montoValido) && { opacity: 0.4 },
+              ]}
+              onPress={handleAgregar}
+            >
               <Text style={styles.botonText}>Guardar gasto</Text>
             </TouchableOpacity>
             <TouchableOpacity onPress={() => setModalVisible(false)}>
               <Text style={styles.cancelar}>Cancelar</Text>
             </TouchableOpacity>
           </View>
-        </View>
+        </KeyboardAvoidingView>
       </Modal>
     </View>
   );
@@ -287,7 +307,7 @@ export default function GastosScreen() {
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: colors.background },
-  lista: { padding: 16, paddingBottom: 100 },
+  lista: { padding: 16, paddingTop: 0, paddingBottom: 100 },
 
   vistasRow: {
     flexDirection: "row",
@@ -312,7 +332,6 @@ const styles = StyleSheet.create({
   vistaBtnTextActive: { color: colors.background, fontWeight: "600" },
 
   totalCard: {
-    marginHorizontal: 16,
     marginBottom: 12,
     backgroundColor: colors.card,
     borderRadius: 14,

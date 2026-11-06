@@ -1,4 +1,5 @@
 import AsyncStorage from "@react-native-async-storage/async-storage";
+import { quitarActividadDeHoy, registrarActividad } from "./actividades";
 
 const KEY = "rutinas";
 const KEY_FECHA = "rutinas_ultima_fecha";
@@ -45,6 +46,15 @@ export async function toggleRutina(id) {
     r.id === id ? { ...r, completada: !r.completada } : r,
   );
   await AsyncStorage.setItem(KEY, JSON.stringify(actualizadas));
+
+  // Anotar en el historial: así el calendario sabe qué hiciste cada día,
+  // aunque mañana el reset diario vuelva a poner la rutina en "no completada".
+  const rutina = actualizadas.find((r) => r.id === id);
+  if (rutina) {
+    if (rutina.completada) await registrarActividad("rutina", rutina);
+    else await quitarActividadDeHoy("rutina", id);
+  }
+
   return actualizadas;
 }
 

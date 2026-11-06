@@ -48,7 +48,6 @@ export default function RutinasScreen() {
   }
 
   const completadas = rutinas.filter((r) => r.completada).length;
-  const categorias = Object.keys(categoriaConfig);
 
   return (
     <View style={styles.container}>

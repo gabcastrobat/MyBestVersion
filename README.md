@@ -1,50 +1,43 @@
-# Welcome to your Expo app 👋
+# 📱 MyBestVersion
 
-This is an [Expo](https://expo.dev) project created with [`create-expo-app`](https://www.npmjs.com/package/create-expo-app).
+App de productividad personal (React Native + Expo SDK 54 + Expo Router).
+Rutinas con recordatorios diarios, tareas, gastos y perfil, todo guardado en el
+dispositivo con AsyncStorage.
 
-## Get started
+## Módulos
 
-1. Install dependencies
+| Tab      | Qué hace |
+| -------- | -------- |
+| Home     | Progreso del día (rutinas + tareas), cuy motivador, gasto de hoy |
+| Rutinas  | Rutinas diarias con notificación diaria y reset automático cada día |
+| Tareas   | Tareas con prioridad; al cambiar de día se limpian las ya completadas |
+| Gastos   | Gastos por Hoy / Semana / Mes con gráfico por categoría |
+| Perfil   | Nombre, email, teléfono y foto |
 
-   ```bash
-   npm install
-   ```
+## Arquitectura
 
-2. Start the app
-
-   ```bash
-   npx expo start
-   ```
-
-In the output, you'll find options to open the app in a
-
-- [development build](https://docs.expo.dev/develop/development-builds/introduction/)
-- [Android emulator](https://docs.expo.dev/workflow/android-studio-emulator/)
-- [iOS simulator](https://docs.expo.dev/workflow/ios-simulator/)
-- [Expo Go](https://expo.dev/go), a limited sandbox for trying out app development with Expo
-
-You can start developing by editing the files inside the **app** directory. This project uses [file-based routing](https://docs.expo.dev/router/introduction).
-
-## Get a fresh project
-
-When you're ready, run:
-
-```bash
-npm run reset-project
+```
+src/storage/*  →  src/hooks/use*.js  →  app/*.jsx
+ (AsyncStorage)     (lógica + useFocusEffect)   (solo render)
 ```
 
-This command will move the starter code to the **app-example** directory and create a blank **app** directory where you can start developing.
+Los hooks usan `useFocusEffect`, así que cada tab se refresca al volver a él.
 
-## Learn more
+## Desarrollo
 
-To learn more about developing your project with Expo, look at the following resources:
+```bash
+npm install
+npx expo start
+```
 
-- [Expo documentation](https://docs.expo.dev/): Learn fundamentals, or go into advanced topics with our [guides](https://docs.expo.dev/guides).
-- [Learn Expo tutorial](https://docs.expo.dev/tutorial/introduction/): Follow a step-by-step tutorial where you'll create a project that runs on Android, iOS, and the web.
+## Generar el APK (EAS Build)
 
-## Join the community
+```bash
+npx eas-cli login
+npx eas-cli build -p android --profile preview
+```
 
-Join our community of developers creating universal apps.
+- `preview` → `.apk` instalable directo (`android.buildType: "apk"`)
+- `production` → `.aab` para Play Store
 
-- [Expo on GitHub](https://github.com/expo/expo): View our open source platform and contribute.
-- [Discord community](https://chat.expo.dev): Chat with Expo users and ask questions.
+Las notificaciones de rutinas solo se pueden probar completas en el APK, no en Expo Go.

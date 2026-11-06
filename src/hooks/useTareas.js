@@ -1,24 +1,34 @@
-import { useEffect, useState } from "react";
+import { useFocusEffect } from "expo-router";
+import { useCallback, useState } from "react";
 import {
-    deleteTarea,
-    getTareas,
-    saveTarea,
-    toggleTarea,
+  deleteTarea,
+  getTareas,
+  resetDiarioSiNecesario,
+  saveTarea,
+  toggleTarea,
 } from "../storage/tareas";
 
 export function useTareas() {
   const [tareas, setTareas] = useState([]);
   const [cargando, setCargando] = useState(true);
 
-  useEffect(() => {
-    cargar();
-  }, []);
-
-  async function cargar() {
-    const data = await getTareas();
-    setTareas(data);
-    setCargando(false);
-  }
+  // useFocusEffect (no useEffect): recarga cada vez que el tab gana foco
+  useFocusEffect(
+    useCallback(() => {
+      let activo = true;
+      (async () => {
+        await resetDiarioSiNecesario();
+        const data = await getTareas();
+        if (activo) {
+          setTareas(data);
+          setCargando(false);
+        }
+      })();
+      return () => {
+        activo = false;
+      };
+    }, []),
+  );
 
   async function agregar(tarea) {
     const nueva = await saveTarea(tarea);
