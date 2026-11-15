@@ -102,7 +102,12 @@ export default function EntrenoScreen() {
           <Text style={styles.titulo}>{entreno.nombre}</Text>
           <Text style={styles.reloj}>⏱ {cronometro(segundos)}</Text>
         </View>
-        <TouchableOpacity onPress={handleDescartar}>
+        <TouchableOpacity
+          onPress={handleDescartar}
+          hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
+          accessibilityRole="button"
+          accessibilityLabel="Descartar entreno"
+        >
           <Text style={styles.descartar}>Descartar</Text>
         </TouchableOpacity>
       </View>
@@ -139,12 +144,20 @@ export default function EntrenoScreen() {
                 <TouchableOpacity
                   style={styles.colAccion}
                   onPress={() => quitarSerie(ej.id, s.id)}
+                  hitSlop={{ top: 12, bottom: 12, left: 8, right: 8 }}
+                  accessibilityRole="button"
+                  accessibilityLabel={`Quitar serie ${i + 1} de ${ej.nombre}`}
                 >
                   <Ionicons name="close" size={18} color={colors.textMuted} />
                 </TouchableOpacity>
               </View>
             ))}
-            <TouchableOpacity onPress={() => agregarSerie(ej.id)}>
+            <TouchableOpacity
+              onPress={() => agregarSerie(ej.id)}
+              hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+              accessibilityRole="button"
+              accessibilityLabel={`Agregar serie a ${ej.nombre}`}
+            >
               <Text style={styles.agregarSerie}>+ Serie</Text>
             </TouchableOpacity>
           </View>
@@ -165,6 +178,8 @@ export default function EntrenoScreen() {
           />
           <TouchableOpacity
             style={styles.masBtn}
+            accessibilityRole="button"
+            accessibilityLabel="Agregar ejercicio"
             onPress={() => {
               agregarEjercicio(nuevoEjercicio);
               setNuevoEjercicio("");

@@ -222,6 +222,7 @@ export default function AlarmasScreen() {
             <Switch
               value={item.activa}
               onValueChange={() => alternar(item)}
+              accessibilityLabel={`Alarma de las ${textoHora(item.hora, item.minuto)} ${item.activa ? "activa" : "apagada"}`}
               trackColor={{ false: colors.input, true: colors.success }}
               thumbColor={colors.text}
             />
@@ -230,7 +231,12 @@ export default function AlarmasScreen() {
       />
 
       {alarmas.length > 0 && (
-        <TouchableOpacity style={styles.fab} onPress={abrirNueva}>
+        <TouchableOpacity
+          style={styles.fab}
+          onPress={abrirNueva}
+          accessibilityRole="button"
+          accessibilityLabel="Nueva alarma"
+        >
           <Ionicons name="add" size={28} color={colors.background} />
         </TouchableOpacity>
       )}

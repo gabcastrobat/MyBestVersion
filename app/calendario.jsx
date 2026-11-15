@@ -165,7 +165,7 @@ export default function CalendarioScreen() {
           <Text style={styles.emptyEmoji}>🗓️</Text>
           <Text style={styles.emptyText}>
             {seleccionada === hoy()
-              ? "Aún no completas nada hoy. Marca una rutina o tarea y aparecerá aquí."
+              ? "Aún no completas nada hoy. Marca un hábito o tarea y aparecerá aquí."
               : "No hay actividades registradas este día."}
           </Text>
         </View>

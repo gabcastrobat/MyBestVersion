@@ -12,16 +12,15 @@ import {
 import { Boton } from "../src/components/Boton";
 import { EstadoVacio } from "../src/components/EstadoVacio";
 import { FilaMarcable } from "../src/components/FilaMarcable";
+import { TarjetaHabito } from "../src/components/TarjetaHabito";
 import { colors } from "../src/constants/colors.js";
-import { AREAS } from "../src/constants/planMejora";
 import { useGastos } from "../src/hooks/useGastos";
 import { usePerfil } from "../src/hooks/usePerfil";
 import { usePlan } from "../src/hooks/usePlan";
-import { useRutinas } from "../src/hooks/useRutinas";
 import { useTareas } from "../src/hooks/useTareas";
-import { parseHora } from "../src/storage/notificaciones";
-import { anclasActivas, racha } from "../src/storage/plan";
+import { habitosDeHoy } from "../src/storage/plan";
 import { hoy as fechaHoy } from "../src/utils/fechas";
+import { minutosDelDia } from "../src/utils/horas";
 
 // El cuy entrenador cambia según cuánto llevas del día
 const cuyImagenes = {
@@ -36,7 +35,7 @@ function mensajeCuy(progreso, total) {
     return {
       img: cuyImagenes.agua,
       titulo: "Empieza tu día",
-      texto: "Agrega una rutina o una tarea. El cuy te está esperando.",
+      texto: "Agrega un hábito o una tarea. El cuy te está esperando.",
     };
   if (progreso >= 1)
     return {
@@ -70,52 +69,33 @@ const COLOR_PRIORIDAD = {
 };
 const ORDEN_PRIORIDAD = { Alta: 0, Media: 1, Baja: 2 };
 
-// "7:30 PM" → minutos desde medianoche, para ordenar rutinas por hora
-function minutosDelDia(hora) {
-  const { hora24, minutos } = parseHora(hora);
-  return hora24 * 60 + minutos;
-}
-
 export default function HoyScreen() {
   const router = useRouter();
   // Los hooks recargan al ganar foco y aplican el reset diario
-  const { rutinas, toggle: toggleRutina } = useRutinas();
   const { tareas, toggle: toggleTarea } = useTareas();
   const { perfil } = usePerfil();
   const { gastos } = useGastos();
-  const { plan, marcarHabito } = usePlan();
+  const { plan, marcarHabito, error: errorPlan, reintentar } = usePlan();
 
-  // Marcar desde aquí: vibración suave solo al completar
-  function marcar(item) {
-    if (!item.completada)
+  // Marcar una tarea: vibración suave solo al completar.
+  // (Los hábitos se marcan dentro de TarjetaHabito, que ya vibra por su cuenta.)
+  function marcarTarea(tarea) {
+    if (!tarea.completada)
       Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => {});
-    (item.tipo === "rutina" ? toggleRutina : toggleTarea)(item.id);
+    toggleTarea(tarea.id);
   }
 
-  // Hábito ancla: "completo" o "minimo". Tocar el mismo botón otra vez lo desmarca
-  // (lo resuelve marcarHabitoHoy en storage/plan.js).
-  function marcarAncla(habito, tipo) {
-    if (habito.dias[fechaHoy()] !== tipo)
-      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => {});
-    marcarHabito(habito.id, tipo);
-  }
-
-  // Hábitos ancla activos (del Plan). Cuenta como hecho hoy si está marcado
-  // como "completo" o como "minimo". Mientras el plan carga, no hay ninguno.
+  // Hábitos que tocan hoy (activos, ancla o no), por hora. Cuenta como hecho si
+  // está marcado "completo" o "minimo". Mientras el plan carga, no hay ninguno.
   const hoyStr = fechaHoy();
-  const anclas = (plan ? anclasActivas(plan) : []).map((h) => ({
-    ...h,
-    tipo: "habito",
-    completada: !!h.dias[hoyStr],
-  }));
+  const habitos = (plan ? habitosDeHoy(plan) : [])
+    .sort((a, b) => minutosDelDia(a.hora) - minutosDelDia(b.hora))
+    .map((h) => ({ ...h, tipo: "habito", completada: !!h.dias[hoyStr] }));
 
-  // Lista única de "lo de hoy": hábitos ancla, rutinas por hora y tareas por
-  // prioridad. Lo pendiente va arriba; lo hecho baja (sigue visible para deshacer).
+  // Lista única de "lo de hoy": hábitos por hora y tareas por prioridad.
+  // Lo pendiente va arriba; lo hecho baja (sigue visible para poder deshacer).
   const items = [
-    ...anclas,
-    ...[...rutinas]
-      .sort((a, b) => minutosDelDia(a.hora) - minutosDelDia(b.hora))
-      .map((r) => ({ ...r, tipo: "rutina" })),
+    ...habitos,
     ...[...tareas]
       .sort(
         (a, b) =>
@@ -196,16 +176,29 @@ export default function HoyScreen() {
 
       {/* Lista unificada de lo de hoy */}
       <Text style={styles.seccionTitulo}>Para hoy</Text>
+      {errorPlan && (
+        <TouchableOpacity
+          style={styles.avisoError}
+          onPress={reintentar}
+          accessibilityRole="button"
+          accessibilityLabel="No se pudieron cargar tus hábitos. Reintentar"
+        >
+          <Ionicons name="alert-circle-outline" size={20} color={colors.danger} />
+          <Text style={styles.avisoErrorTexto}>
+            No se pudieron cargar tus hábitos. Toca para reintentar.
+          </Text>
+        </TouchableOpacity>
+      )}
       {lista.length === 0 ? (
         <View>
           <EstadoVacio
             icono="sunny-outline"
             titulo="Nada para hoy todavía"
-            subtitulo="Agrega una rutina o una tarea para empezar"
+            subtitulo="Agrega un hábito o una tarea para empezar"
           />
           <View style={styles.vacioBotones}>
             <Boton
-              titulo="Nueva rutina"
+              titulo="Nuevo hábito"
               onPress={() => router.push("/rutinas")}
             />
             <Boton
@@ -217,95 +210,21 @@ export default function HoyScreen() {
       ) : (
         lista.map((i) => {
           if (i.tipo === "habito") {
-            const cfg = AREAS[i.area] ?? AREAS.Cuerpo;
-            const dias = racha(i);
-            const marca = i.dias[hoyStr];
             return (
-              <View
+              <TarjetaHabito
                 key={`habito-${i.id}`}
-                style={[styles.habitoCard, i.completada && styles.habitoHecho]}
-              >
-                <View style={styles.habitoTop}>
-                  <View
-                    style={[
-                      styles.habitoIcono,
-                      { backgroundColor: cfg.color + "22" },
-                    ]}
-                  >
-                    <Ionicons name={cfg.icon} size={18} color={cfg.color} />
-                  </View>
-                  <View style={styles.habitoInfo}>
-                    <Text
-                      style={[
-                        styles.filaNombre,
-                        i.completada && styles.completada,
-                      ]}
-                    >
-                      {i.nombre}
-                    </Text>
-                    <Text style={styles.meta}>
-                      Hábito ancla · Mínimo: {i.minimo}
-                      {dias > 0
-                        ? ` · 🔥 ${dias} día${dias === 1 ? "" : "s"}`
-                        : ""}
-                    </Text>
-                  </View>
-                </View>
-                <View style={styles.habitoBotones}>
-                  <TouchableOpacity
-                    style={[
-                      styles.marcaBtn,
-                      marca === "completo" && styles.marcaCompleto,
-                    ]}
-                    onPress={() => marcarAncla(i, "completo")}
-                    accessibilityRole="button"
-                    accessibilityState={{ selected: marca === "completo" }}
-                    accessibilityLabel={`Marcar hecho: ${i.nombre}`}
-                  >
-                    <Text
-                      style={[
-                        styles.marcaText,
-                        marca === "completo" && styles.marcaTextActivo,
-                      ]}
-                    >
-                      ✓ Hecho
-                    </Text>
-                  </TouchableOpacity>
-                  <TouchableOpacity
-                    style={[
-                      styles.marcaBtn,
-                      marca === "minimo" && styles.marcaMinimo,
-                    ]}
-                    onPress={() => marcarAncla(i, "minimo")}
-                    accessibilityRole="button"
-                    accessibilityState={{ selected: marca === "minimo" }}
-                    accessibilityLabel={`Marcar versión mínima: ${i.nombre}`}
-                  >
-                    <Text
-                      style={[
-                        styles.marcaText,
-                        marca === "minimo" && styles.marcaTextActivo,
-                      ]}
-                    >
-                      Versión mínima
-                    </Text>
-                  </TouchableOpacity>
-                </View>
-              </View>
+                habito={i}
+                onMarcar={(tipo) => marcarHabito(i.id, tipo)}
+              />
             );
           }
-          const esRutina = i.tipo === "rutina";
           const colorPrioridad = COLOR_PRIORIDAD[i.prioridad];
           return (
             <FilaMarcable
               key={`${i.tipo}-${i.id}`}
               completada={i.completada}
-              onPress={() => marcar(i)}
-              etiqueta={
-                esRutina
-                  ? `Rutina ${i.nombre}, ${i.hora}`
-                  : `Tarea ${i.nombre}, prioridad ${i.prioridad}`
-              }
+              onPress={() => marcarTarea(i)}
+              etiqueta={`Tarea ${i.nombre}, prioridad ${i.prioridad}`}
               style={styles.fila}
               izquierda={
                 <View style={[styles.check, i.completada && styles.checkDone]}>
@@ -326,18 +245,14 @@ export default function HoyScreen() {
               </Text>
               <View style={styles.metaRow}>
                 <Ionicons
-                  name={esRutina ? "repeat-outline" : "checkmark-circle-outline"}
+                  name="checkmark-circle-outline"
                   size={12}
                   color={colors.textSecondary}
                 />
-                <Text style={styles.meta}>
-                  {esRutina ? `${i.hora} · ${i.categoria}` : "Tarea"}
+                <Text style={styles.meta}>Tarea</Text>
+                <Text style={[styles.meta, { color: colorPrioridad }]}>
+                  · {i.prioridad}
                 </Text>
-                {!esRutina && (
-                  <Text style={[styles.meta, { color: colorPrioridad }]}>
-                    · {i.prioridad}
-                  </Text>
-                )}
               </View>
             </FilaMarcable>
           );
@@ -436,37 +351,17 @@ const styles = StyleSheet.create({
     marginBottom: 12,
   },
   vacioBotones: { marginTop: 24 },
-
-  habitoCard: {
-    backgroundColor: colors.card,
-    borderRadius: 14,
-    padding: 14,
-    marginBottom: 10,
-    gap: 12,
-  },
-  habitoHecho: { opacity: 0.7 },
-  habitoTop: { flexDirection: "row", alignItems: "center", gap: 12 },
-  habitoIcono: {
-    width: 40,
-    height: 40,
+  avisoError: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 10,
+    backgroundColor: colors.danger + "22",
     borderRadius: 12,
-    alignItems: "center",
-    justifyContent: "center",
+    padding: 12,
+    minHeight: 48,
+    marginBottom: 10,
   },
-  habitoInfo: { flex: 1 },
-  habitoBotones: { flexDirection: "row", gap: 8 },
-  marcaBtn: {
-    flex: 1,
-    minHeight: 44,
-    backgroundColor: colors.input,
-    borderRadius: 10,
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  marcaCompleto: { backgroundColor: colors.success },
-  marcaMinimo: { backgroundColor: colors.warning },
-  marcaText: { color: colors.textSecondary, fontWeight: "600", fontSize: 13 },
-  marcaTextActivo: { color: colors.onPrimary },
+  avisoErrorTexto: { color: colors.text, fontSize: 13, flex: 1 },
 
   fila: { padding: 14, gap: 12 },
   check: {

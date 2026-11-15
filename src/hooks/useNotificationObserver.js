@@ -1,6 +1,7 @@
 import * as Notifications from "expo-notifications";
 import { router } from "expo-router";
 import { useEffect } from "react";
+import { Platform } from "react-native";
 
 /**
  * Navega a la pantalla indicada en `data.url` cuando el usuario toca
@@ -12,6 +13,9 @@ import { useEffect } from "react";
  */
 export function useNotificationObserver() {
   useEffect(() => {
+    // En web expo-notifications no tiene estas funciones: sin esta salida,
+    // la app lanzaba un error sin capturar al abrirse en el navegador.
+    if (Platform.OS === "web") return;
     let activo = true;
 
     function redirigir(notification) {

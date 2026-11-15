@@ -12,7 +12,8 @@ import { reprogramarAlarmas } from "../src/storage/programadorAlarmas";
 // Lo demás (Plan, Gym, Alarmas, Gastos, Perfil) se llega desde "Más".
 const PESTANAS = [
   { name: "index", title: "Hoy", icon: "today-outline" },
-  { name: "rutinas", title: "Rutinas", icon: "repeat-outline" },
+  // La ruta se sigue llamando "rutinas" (las notificaciones guardadas apuntan ahí)
+  { name: "rutinas", title: "Hábitos", icon: "repeat-outline" },
   { name: "tareas", title: "Tareas", icon: "checkmark-circle-outline" },
   { name: "calendario", title: "Calendario", icon: "calendar-outline" },
   { name: "mas", title: "Más", icon: "ellipsis-horizontal-circle-outline" },

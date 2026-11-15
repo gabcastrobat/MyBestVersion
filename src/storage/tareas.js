@@ -1,5 +1,10 @@
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { quitarActividadDeHoy, registrarActividad } from "./actividades";
+import { crearCola } from "../utils/cola";
+
+// Todas las escrituras de este archivo pasan por la misma cola: así dos
+// cambios casi simultáneos no se pisan (ver utils/cola.js).
+const enSerie = crearCola();
 
 const KEY = "tareas";
 const KEY_FECHA = "tareas_ultima_fecha";
@@ -7,7 +12,7 @@ const KEY_FECHA = "tareas_ultima_fecha";
 // Mismo patrón que en Rutinas: si cambió el día, se limpian las tareas
 // que ya se completaron en días anteriores. Las pendientes se conservan
 // para que no se pierdan (se "arrastran" al día nuevo).
-export async function resetDiarioSiNecesario() {
+export const resetDiarioSiNecesario = enSerie(async () => {
   const hoy = new Date().toDateString();
   const ultimaFecha = await AsyncStorage.getItem(KEY_FECHA);
 
@@ -17,14 +22,14 @@ export async function resetDiarioSiNecesario() {
     await AsyncStorage.setItem(KEY, JSON.stringify(vigentes));
     await AsyncStorage.setItem(KEY_FECHA, hoy);
   }
-}
+});
 
 export async function getTareas() {
   const data = await AsyncStorage.getItem(KEY);
   return data ? JSON.parse(data) : [];
 }
 
-export async function saveTarea(tarea) {
+export const saveTarea = enSerie(async (tarea) => {
   const tareas = await getTareas();
   const nueva = {
     id: Date.now().toString(),
@@ -36,9 +41,9 @@ export async function saveTarea(tarea) {
   tareas.push(nueva);
   await AsyncStorage.setItem(KEY, JSON.stringify(tareas));
   return nueva;
-}
+});
 
-export async function toggleTarea(id) {
+export const toggleTarea = enSerie(async (id) => {
   const tareas = await getTareas();
   const actualizadas = tareas.map((t) =>
     t.id === id
@@ -60,12 +65,12 @@ export async function toggleTarea(id) {
   }
 
   return actualizadas;
-}
+});
 
 // Edita nombre y/o prioridad. `cambios` = { nombre?, prioridad? }
 // Solo se aceptan esos campos: así una pantalla no puede cambiar por error
 // el id o el estado de completada desde aquí.
-export async function updateTarea(id, cambios) {
+export const updateTarea = enSerie(async (id, cambios) => {
   const nombre = cambios.nombre?.trim();
   if (cambios.nombre !== undefined && !nombre) {
     throw new Error("El nombre de la tarea no puede estar vacío");
@@ -83,11 +88,11 @@ export async function updateTarea(id, cambios) {
   );
   await AsyncStorage.setItem(KEY, JSON.stringify(actualizadas));
   return actualizadas;
-}
+});
 
-export async function deleteTarea(id) {
+export const deleteTarea = enSerie(async (id) => {
   const tareas = await getTareas();
   const filtradas = tareas.filter((t) => t.id !== id);
   await AsyncStorage.setItem(KEY, JSON.stringify(filtradas));
   return filtradas;
-}
+});

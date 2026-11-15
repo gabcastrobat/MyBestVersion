@@ -1,4 +1,9 @@
 import AsyncStorage from "@react-native-async-storage/async-storage";
+import { crearCola } from "../utils/cola";
+
+// Todas las escrituras de este archivo pasan por la misma cola: así dos
+// cambios casi simultáneos no se pisan (ver utils/cola.js).
+const enSerie = crearCola();
 
 const KEY = "gastos";
 
@@ -7,7 +12,7 @@ export async function getGastos() {
   return data ? JSON.parse(data) : [];
 }
 
-export async function saveGasto(gasto) {
+export const saveGasto = enSerie(async (gasto) => {
   const gastos = await getGastos();
   const nuevo = {
     id: Date.now().toString(),
@@ -19,11 +24,11 @@ export async function saveGasto(gasto) {
   gastos.push(nuevo);
   await AsyncStorage.setItem(KEY, JSON.stringify(gastos));
   return nuevo;
-}
+});
 
-export async function deleteGasto(id) {
+export const deleteGasto = enSerie(async (id) => {
   const gastos = await getGastos();
   const filtrados = gastos.filter((g) => g.id !== id);
   await AsyncStorage.setItem(KEY, JSON.stringify(filtrados));
   return filtrados;
-}
+});

@@ -1,6 +1,7 @@
 import { Ionicons } from "@expo/vector-icons";
 import { useState } from "react";
 import {
+  Alert,
   FlatList,
   KeyboardAvoidingView,
   Modal,
@@ -14,6 +15,7 @@ import {
 import { GastosPorCategoria } from "../src/components/GastosPorCategoria";
 import { colors } from "../src/constants/colors.js";
 import { useGastos } from "../src/hooks/useGastos";
+import { inicioSemana } from "../src/utils/fechas";
 
 const categoriaConfig = {
   Comida: { icon: "fast-food-outline", color: "#ff6b6b" },
@@ -66,12 +68,10 @@ function esMismodia(fecha1, fecha2) {
   return fecha1.toDateString() === fecha2.toDateString();
 }
 
+// La semana empieza el lunes, igual que en el Calendario y los hábitos
 function esMismaSemana(fecha) {
-  const hoy = new Date();
-  const inicio = new Date(hoy);
-  inicio.setDate(hoy.getDate() - hoy.getDay());
-  inicio.setHours(0, 0, 0, 0);
-  return fecha >= inicio;
+  const [a, m, d] = inicioSemana().split("-").map(Number);
+  return fecha >= new Date(a, m - 1, d);
 }
 
 function esMismoMes(fecha) {
@@ -89,6 +89,7 @@ export default function GastosScreen() {
   const [monto, setMonto] = useState("");
   const [categoria, setCategoria] = useState("Comida");
   const [vista, setVista] = useState("Hoy");
+  const [error, setError] = useState("");
 
   // Acepta "15.000", "15000" o "15000,50"
   const montoNumero = parseFloat(
@@ -96,17 +97,42 @@ export default function GastosScreen() {
   );
   const montoValido = Number.isFinite(montoNumero) && montoNumero > 0;
 
-  async function handleAgregar() {
-    if (!descripcion.trim() || !montoValido) return;
-    await agregar({ descripcion: descripcion.trim(), monto: montoNumero, categoria });
+  function abrirModal() {
     setDescripcion("");
     setMonto("");
     setCategoria("Comida");
-    setModalVisible(false);
+    setError("");
+    setModalVisible(true);
   }
 
-  async function handleEliminar(id) {
-    await eliminar(id);
+  async function handleAgregar() {
+    if (!descripcion.trim()) {
+      setError("Escribe en qué gastaste");
+      return;
+    }
+    if (!montoValido) {
+      setError("Escribe un monto mayor que 0 (ej: 15000 o 15.000)");
+      return;
+    }
+    try {
+      await agregar({ descripcion: descripcion.trim(), monto: montoNumero, categoria });
+      setModalVisible(false);
+    } catch (e) {
+      setError(e.message || "No se pudo guardar el gasto");
+    }
+  }
+
+  // Borrar un gasto no se puede deshacer: se confirma antes
+  function handleEliminar(gasto) {
+    const monto = (Number(gasto.monto) || 0).toLocaleString("es-CO");
+    Alert.alert("Eliminar gasto", `¿Borrar "${gasto.descripcion}" por $${monto}?`, [
+      { text: "Cancelar", style: "cancel" },
+      {
+        text: "Eliminar",
+        style: "destructive",
+        onPress: () => eliminar(gasto.id),
+      },
+    ]);
   }
 
   const hoy = new Date();
@@ -130,6 +156,8 @@ export default function GastosScreen() {
             key={v}
             style={[styles.vistaBtn, vista === v && styles.vistaBtnActive]}
             onPress={() => setVista(v)}
+            accessibilityRole="tab"
+            accessibilityState={{ selected: vista === v }}
           >
             <Text
               style={[
@@ -196,11 +224,14 @@ export default function GastosScreen() {
                 </Text>
               </View>
               <Text style={styles.cardMonto}>
-                ${item.monto.toLocaleString("es-CO")}
+                ${(Number(item.monto) || 0).toLocaleString("es-CO")}
               </Text>
               <TouchableOpacity
-                onPress={() => handleEliminar(item.id)}
+                onPress={() => handleEliminar(item)}
                 style={styles.deleteBtn}
+                hitSlop={{ top: 10, bottom: 10, left: 6, right: 6 }}
+                accessibilityRole="button"
+                accessibilityLabel={`Eliminar gasto ${item.descripcion}`}
               >
                 <Ionicons
                   name="trash-outline"
@@ -215,7 +246,8 @@ export default function GastosScreen() {
 
       <TouchableOpacity
         style={styles.fab}
-        onPress={() => setModalVisible(true)}
+        onPress={abrirModal}
+        accessibilityRole="button"
       >
         <Ionicons name="add" size={22} color={colors.background} />
         <Text style={styles.fabText}>Nuevo gasto</Text>
@@ -238,18 +270,27 @@ export default function GastosScreen() {
               style={styles.input}
               placeholder="¿En qué gastaste?"
               placeholderTextColor={colors.textMuted}
+              accessibilityLabel="Descripción del gasto"
               value={descripcion}
-              onChangeText={setDescripcion}
+              onChangeText={(t) => {
+                setDescripcion(t);
+                if (error) setError("");
+              }}
             />
 
             <TextInput
               style={styles.input}
               placeholder="Monto ($)"
               placeholderTextColor={colors.textMuted}
+              accessibilityLabel="Monto en pesos"
               value={monto}
-              onChangeText={setMonto}
+              onChangeText={(t) => {
+                setMonto(t);
+                if (error) setError("");
+              }}
               keyboardType="numeric"
             />
+            {error ? <Text style={styles.error}>{error}</Text> : null}
 
             <Text style={styles.label}>Categoría</Text>
             <View style={styles.categoriasGrid}>
@@ -267,6 +308,8 @@ export default function GastosScreen() {
                       },
                     ]}
                     onPress={() => setCategoria(c)}
+                    accessibilityRole="radio"
+                    accessibilityState={{ selected: activa }}
                   >
                     <Ionicons
                       name={cfg.icon}
@@ -287,11 +330,9 @@ export default function GastosScreen() {
             </View>
 
             <TouchableOpacity
-              style={[
-                styles.boton,
-                (!descripcion.trim() || !montoValido) && { opacity: 0.4 },
-              ]}
+              style={styles.boton}
               onPress={handleAgregar}
+              accessibilityRole="button"
             >
               <Text style={styles.botonText}>Guardar gasto</Text>
             </TouchableOpacity>
@@ -375,7 +416,8 @@ const styles = StyleSheet.create({
   },
   cardMeta: { fontSize: 12, color: colors.textSecondary },
   cardMonto: { fontSize: 16, fontWeight: "700", color: colors.text },
-  deleteBtn: { padding: 4 },
+  deleteBtn: { padding: 10 },
+  error: { color: colors.danger, fontSize: 13, marginTop: -6, marginBottom: 10 },
 
   fab: {
     position: "absolute",

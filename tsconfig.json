@@ -14,5 +14,6 @@
     "app/tareas.jsx",
     "app/rutinas.jsx",
     "app/perfil.jsx"
-  ]
+  ],
+  "exclude": ["node_modules", "app-example"]
 }

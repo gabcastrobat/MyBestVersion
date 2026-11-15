@@ -30,8 +30,14 @@ yarn-error.*
 .DS_Store
 *.pem
 
-# local env files
+# local env files (nunca subir secretos)
+.env
+.env.*
+!.env.example
 .env*.local
+
+# volcados generados por herramientas
+repomix-output.xml
 
 # typescript
 *.tsbuildinfo
