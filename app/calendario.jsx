@@ -34,6 +34,7 @@ LocaleConfig.defaultLocale = "es";
 const TIPOS = {
   rutina: { color: colors.info, icono: "🔁", label: "Rutina" },
   tarea: { color: colors.success, icono: "✅", label: "Tarea" },
+  habito: { color: colors.warning, icono: "🔥", label: "Hábito" },
 };
 
 // "2026-11-06" → "viernes, 6 de noviembre"
@@ -96,6 +97,7 @@ export default function CalendarioScreen() {
   const anioVisible = Number(mesVisible.slice(0, 4));
   const rutinasDia = actividades.filter((a) => a.tipo === "rutina").length;
   const tareasDia = actividades.filter((a) => a.tipo === "tarea").length;
+  const habitosDia = actividades.filter((a) => a.tipo === "habito").length;
 
   return (
     <ScrollView style={styles.container} contentContainerStyle={styles.content}>
@@ -150,6 +152,9 @@ export default function CalendarioScreen() {
       <Text style={styles.diaSub}>
         {rutinasDia} rutina{rutinasDia === 1 ? "" : "s"} · {tareasDia} tarea
         {tareasDia === 1 ? "" : "s"}
+        {habitosDia > 0
+          ? ` · ${habitosDia} hábito${habitosDia === 1 ? "" : "s"}`
+          : ""}
       </Text>
 
       {actividades.length === 0 ? (

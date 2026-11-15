@@ -17,3 +17,25 @@ export function fechaLocal(date = new Date()) {
 export function hoy() {
   return fechaLocal(new Date());
 }
+
+// Lunes de la semana de `date`, en "YYYY-MM-DD".
+// getDay() devuelve 0 = domingo ... 6 = sábado; aquí la semana arranca el lunes,
+// así que el domingo pertenece a la semana que empezó 6 días antes.
+export function inicioSemana(date = new Date()) {
+  const d = new Date(date);
+  const retroceso = (d.getDay() + 6) % 7; // lunes → 0, domingo → 6
+  d.setDate(d.getDate() - retroceso);
+  return fechaLocal(d);
+}
+
+// Los 7 días (lunes a domingo) de la semana de `date`, en "YYYY-MM-DD"
+export function diasDeLaSemana(date = new Date()) {
+  const [a, m, d] = inicioSemana(date).split("-").map(Number);
+  return Array.from({ length: 7 }, (_, i) => fechaLocal(new Date(a, m - 1, d + i)));
+}
+
+// El día anterior a una fecha "YYYY-MM-DD"
+export function diaAnterior(fecha) {
+  const [a, m, d] = fecha.split("-").map(Number);
+  return fechaLocal(new Date(a, m - 1, d - 1));
+}

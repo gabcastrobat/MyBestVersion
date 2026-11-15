@@ -23,6 +23,7 @@ const PESTANAS = [
 const OCULTAS = [
   { name: "gastos", title: "Gastos" },
   { name: "perfil", title: "Perfil" },
+  { name: "plan", title: "Mi plan" },
 ];
 
 export default function RootLayout() {

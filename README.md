@@ -13,6 +13,7 @@ dispositivo con AsyncStorage.
 | Tareas   | Tareas con prioridad; al cambiar de día se limpian las ya completadas |
 | Gastos   | Gastos por Hoy / Semana / Mes con gráfico por categoría |
 | Perfil   | Nombre, email, teléfono y foto |
+| Mi plan  | Plan de mejora: máx. 3 hábitos ancla con versión mínima, victorias rápidas, cola de metas por área y revisión semanal (acceso desde Inicio) |
 
 ## Arquitectura
 
