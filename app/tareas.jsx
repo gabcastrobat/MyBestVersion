@@ -9,6 +9,7 @@ import {
   TouchableOpacity,
   View,
 } from "react-native";
+import { Contadores } from "../src/components/Contadores";
 import { colors } from "../src/constants/colors.js";
 import { useTareas } from "../src/hooks/useTareas";
 
@@ -19,43 +20,56 @@ const prioridadConfig = {
 };
 
 export default function TareasScreen() {
-  const { tareas, agregar, toggle, eliminar } = useTareas();
+  const { tareas, agregar, toggle, editar, eliminar } = useTareas();
   const [modalVisible, setModalVisible] = useState(false);
   const [nombre, setNombre] = useState("");
   const [prioridad, setPrioridad] = useState("Media");
+  // null = creando una tarea nueva; un id = editando esa tarea.
+  // Así el MISMO modal sirve para crear y para editar.
+  const [editandoId, setEditandoId] = useState(null);
+  const [error, setError] = useState("");
 
-  async function handleAgregar() {
-    if (!nombre.trim()) return;
-    await agregar({ nombre, prioridad });
+  function abrirNueva() {
+    setEditandoId(null);
     setNombre("");
     setPrioridad("Media");
-    setModalVisible(false);
+    setError("");
+    setModalVisible(true);
   }
 
-  const completadas = tareas.filter((t) => t.completada).length;
+  function abrirEdicion(tarea) {
+    setEditandoId(tarea.id);
+    setNombre(tarea.nombre);
+    setPrioridad(tarea.prioridad);
+    setError("");
+    setModalVisible(true);
+  }
+
+  async function handleGuardar() {
+    if (!nombre.trim()) {
+      setError("Escribe qué tienes que hacer");
+      return;
+    }
+    try {
+      if (editandoId) await editar(editandoId, { nombre, prioridad });
+      else await agregar({ nombre, prioridad });
+      setModalVisible(false);
+    } catch (e) {
+      setError(e.message || "No se pudo guardar la tarea");
+    }
+  }
+
   const pendientes = tareas.filter((t) => !t.completada);
   const hechas = tareas.filter((t) => t.completada);
 
   return (
     <View style={styles.container}>
-      {/* Progreso */}
+      {/* Contadores */}
       {tareas.length > 0 && (
-        <View style={styles.progresoBox}>
-          <View style={styles.progresoTextRow}>
-            <Text style={styles.progresoLabel}>Completadas hoy</Text>
-            <Text style={styles.progresoNum}>
-              {completadas}/{tareas.length}
-            </Text>
-          </View>
-          <View style={styles.progresoBar}>
-            <View
-              style={[
-                styles.progresoFill,
-                { width: `${(completadas / tareas.length) * 100}%` },
-              ]}
-            />
-          </View>
-        </View>
+        <Contadores
+          pendientes={pendientes.length}
+          completadas={hechas.length}
+        />
       )}
 
       <FlatList
@@ -122,6 +136,16 @@ export default function TareasScreen() {
                 </View>
               </View>
               <TouchableOpacity
+                onPress={() => abrirEdicion(item)}
+                style={styles.accionBtn}
+              >
+                <Ionicons
+                  name="create-outline"
+                  size={17}
+                  color={colors.textMuted}
+                />
+              </TouchableOpacity>
+              <TouchableOpacity
                 onPress={() => eliminar(item.id)}
                 style={styles.deleteBtn}
               >
@@ -138,24 +162,35 @@ export default function TareasScreen() {
 
       <TouchableOpacity
         style={styles.fab}
-        onPress={() => setModalVisible(true)}
+        onPress={abrirNueva}
       >
         <Ionicons name="add" size={22} color={colors.background} />
         <Text style={styles.fabText}>Nueva tarea</Text>
       </TouchableOpacity>
 
-      <Modal visible={modalVisible} transparent animationType="slide">
+      <Modal
+        visible={modalVisible}
+        transparent
+        animationType="slide"
+        onRequestClose={() => setModalVisible(false)} // botón atrás de Android
+      >
         <View style={styles.modalOverlay}>
           <View style={styles.modal}>
-            <Text style={styles.modalTitulo}>Nueva Tarea</Text>
+            <Text style={styles.modalTitulo}>
+              {editandoId ? "Editar tarea" : "Nueva tarea"}
+            </Text>
             <TextInput
               style={styles.input}
               placeholder="¿Qué tienes que hacer?"
               placeholderTextColor={colors.textMuted}
               value={nombre}
-              onChangeText={setNombre}
+              onChangeText={(t) => {
+                setNombre(t);
+                if (error) setError("");
+              }}
               multiline
             />
+            {error ? <Text style={styles.error}>{error}</Text> : null}
             <Text style={styles.label}>Prioridad</Text>
             <View style={styles.prioridadRow}>
               {Object.entries(prioridadConfig).map(([p, cfg]) => (
@@ -186,8 +221,10 @@ export default function TareasScreen() {
                 </TouchableOpacity>
               ))}
             </View>
-            <TouchableOpacity style={styles.boton} onPress={handleAgregar}>
-              <Text style={styles.botonText}>Guardar tarea</Text>
+            <TouchableOpacity style={styles.boton} onPress={handleGuardar}>
+              <Text style={styles.botonText}>
+                {editandoId ? "Guardar cambios" : "Guardar tarea"}
+              </Text>
             </TouchableOpacity>
             <TouchableOpacity onPress={() => setModalVisible(false)}>
               <Text style={styles.cancelar}>Cancelar</Text>
@@ -202,32 +239,6 @@ export default function TareasScreen() {
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: colors.background },
   lista: { padding: 16, paddingBottom: 100 },
-
-  progresoBox: {
-    margin: 16,
-    marginBottom: 0,
-    backgroundColor: colors.card,
-    borderRadius: 12,
-    padding: 14,
-  },
-  progresoTextRow: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    marginBottom: 8,
-  },
-  progresoLabel: { fontSize: 13, color: colors.textSecondary },
-  progresoNum: { fontSize: 13, fontWeight: "600", color: colors.success },
-  progresoBar: {
-    height: 5,
-    backgroundColor: colors.input,
-    borderRadius: 3,
-    overflow: "hidden",
-  },
-  progresoFill: {
-    height: "100%",
-    backgroundColor: colors.success,
-    borderRadius: 3,
-  },
 
   emptyBox: { alignItems: "center", marginTop: 80, gap: 10 },
   emptyTitulo: { fontSize: 18, fontWeight: "600", color: colors.textSecondary },
@@ -263,7 +274,9 @@ const styles = StyleSheet.create({
   completada: { textDecorationLine: "line-through", color: colors.textMuted },
   tagRow: { flexDirection: "row", alignItems: "center", gap: 4 },
   prioridadText: { fontSize: 12, fontWeight: "500" },
-  deleteBtn: { padding: 14 },
+  accionBtn: { paddingVertical: 14, paddingHorizontal: 6 },
+  deleteBtn: { padding: 14, paddingLeft: 6 },
+  error: { color: colors.danger, fontSize: 13, marginTop: -6, marginBottom: 10 },
 
   fab: {
     position: "absolute",

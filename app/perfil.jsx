@@ -39,7 +39,7 @@ export default function PerfilScreen() {
       return;
     }
     const result = await ImagePicker.launchImageLibraryAsync({
-      mediaTypes: ImagePicker.MediaTypeOptions.Images,
+      mediaTypes: ["images"],
       allowsEditing: true,
       aspect: [1, 1],
       quality: 0.7,
@@ -59,7 +59,6 @@ export default function PerfilScreen() {
   const inicial = nombre.charAt(0).toUpperCase();
 
   const rutinasCompletadas = rutinas.filter((r) => r.completada).length;
-  const tareasCompletadas = tareas.filter((t) => t.completada).length;
   const tareasPendientes = tareas.filter((t) => !t.completada).length;
 
   return (

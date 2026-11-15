@@ -1,5 +1,6 @@
-import { useFocusEffect, useRouter } from "expo-router";
-import { useCallback, useState } from "react";
+import { Ionicons } from "@expo/vector-icons";
+import { Image } from "expo-image";
+import { useRouter } from "expo-router";
 import {
   ScrollView,
   StyleSheet,
@@ -8,34 +9,82 @@ import {
   View,
 } from "react-native";
 import { colors } from "../src/constants/colors.js";
-import { getPerfil } from "../src/storage/perfil";
-import { getRutinas } from "../src/storage/rutinas";
-import { getTareas } from "../src/storage/tareas";
+import { useGastos } from "../src/hooks/useGastos";
+import { usePerfil } from "../src/hooks/usePerfil";
+import { useRutinas } from "../src/hooks/useRutinas";
+import { useTareas } from "../src/hooks/useTareas";
+
+// Accesos rápidos: un toque para llegar a cualquier sección,
+// incluidas Gastos y Perfil, que ya no están en la barra de pestañas.
+const ACCESOS = [
+  { ruta: "/calendario", icono: "calendar-outline", label: "Calendario" },
+  { ruta: "/gimnasio", icono: "barbell-outline", label: "Gym" },
+  { ruta: "/alarmas", icono: "alarm-outline", label: "Alarmas" },
+  { ruta: "/gastos", icono: "wallet-outline", label: "Gastos" },
+];
+
+// El cuy entrenador cambia según cuánto llevas del día
+const cuyImagenes = {
+  agua: require("../assets/images/cuy/agua.jpg"),
+  cuerda: require("../assets/images/cuy/cuerda.jpg"),
+  pesas: require("../assets/images/cuy/pesas.jpg"),
+  boxeando: require("../assets/images/cuy/boxeando.jpg"),
+};
+
+function mensajeCuy(progreso, total) {
+  if (total === 0)
+    return {
+      img: cuyImagenes.agua,
+      titulo: "Empieza tu día",
+      texto: "Agrega una rutina o una tarea. El cuy te está esperando.",
+    };
+  if (progreso >= 1)
+    return {
+      img: cuyImagenes.boxeando,
+      titulo: "¡Día completado! 🥊",
+      texto: "Cumpliste todo. Esa es tu mejor versión.",
+    };
+  if (progreso >= 0.5)
+    return {
+      img: cuyImagenes.pesas,
+      titulo: "Vas con toda 💪",
+      texto: "Ya pasaste la mitad, no aflojes ahora.",
+    };
+  if (progreso > 0)
+    return {
+      img: cuyImagenes.cuerda,
+      titulo: "Arrancaste",
+      texto: "Cada cosa que marcas cuenta. Sigue así.",
+    };
+  return {
+    img: cuyImagenes.agua,
+    titulo: "Toma agua y arranca",
+    texto: "Aún no marcas nada hoy. Empieza por lo más fácil.",
+  };
+}
 
 export default function HomeScreen() {
   const router = useRouter();
-  const [rutinas, setRutinas] = useState([]);
-  const [tareas, setTareas] = useState([]);
-  const [perfil, setPerfil] = useState({ nombre: "" });
-
-  useFocusEffect(
-    useCallback(() => {
-      async function cargar() {
-        const r = await getRutinas();
-        const t = await getTareas();
-        const p = await getPerfil();
-        setRutinas(r);
-        setTareas(t);
-        setPerfil(p);
-      }
-      cargar();
-    }, []),
-  );
+  // Los hooks recargan al ganar foco y aplican el reset diario
+  const { rutinas } = useRutinas();
+  const { tareas } = useTareas();
+  const { perfil } = usePerfil();
+  const { gastos } = useGastos();
 
   const rutinasCompletadas = rutinas.filter((r) => r.completada).length;
   const tareasCompletadas = tareas.filter((t) => t.completada).length;
   const tareasPendientes = tareas.filter((t) => !t.completada);
-  const progreso = tareas.length > 0 ? tareasCompletadas / tareas.length : 0;
+
+  // Progreso del día = rutinas + tareas
+  const totalItems = rutinas.length + tareas.length;
+  const hechos = rutinasCompletadas + tareasCompletadas;
+  const progreso = totalItems > 0 ? hechos / totalItems : 0;
+  const cuy = mensajeCuy(progreso, totalItems);
+
+  const hoyStr = new Date().toDateString();
+  const gastoHoy = gastos
+    .filter((g) => new Date(g.fecha).toDateString() === hoyStr)
+    .reduce((s, g) => s + (Number(g.monto) || 0), 0);
 
   const hora = new Date().getHours();
   const saludo =
@@ -68,7 +117,7 @@ export default function HomeScreen() {
       <View style={styles.progresoCard}>
         <View style={styles.progresoHeader}>
           <Text style={styles.progresoTitulo}>Progreso del día</Text>
-          <Text style={styles.progrеsoPct}>{Math.round(progreso * 100)}%</Text>
+          <Text style={styles.progresoPct}>{Math.round(progreso * 100)}%</Text>
         </View>
         <View style={styles.progresoBar}>
           <View
@@ -76,8 +125,17 @@ export default function HomeScreen() {
           />
         </View>
         <Text style={styles.progresoSub}>
-          {tareasCompletadas} de {tareas.length} tareas completadas
+          {hechos} de {totalItems} rutinas y tareas completadas
         </Text>
+      </View>
+
+      {/* Cuy motivador */}
+      <View style={styles.cuyCard}>
+        <Image source={cuy.img} style={styles.cuyImg} contentFit="cover" />
+        <View style={styles.cuyInfo}>
+          <Text style={styles.cuyTitulo}>{cuy.titulo}</Text>
+          <Text style={styles.cuyTexto}>{cuy.texto}</Text>
+        </View>
       </View>
 
       {/* Cards resumen */}
@@ -102,6 +160,30 @@ export default function HomeScreen() {
           </Text>
           <Text style={styles.resumenLabel}>Tareas</Text>
         </TouchableOpacity>
+        <TouchableOpacity
+          style={[styles.resumenCard, styles.resumenCardGastos]}
+          onPress={() => router.push("/gastos")}
+        >
+          <Text style={styles.resumenEmoji}>💸</Text>
+          <Text style={styles.resumenNum} numberOfLines={1} adjustsFontSizeToFit>
+            ${gastoHoy.toLocaleString("es-CO")}
+          </Text>
+          <Text style={styles.resumenLabel}>Gastado hoy</Text>
+        </TouchableOpacity>
+      </View>
+
+      {/* Accesos rápidos */}
+      <View style={styles.accesosRow}>
+        {ACCESOS.map((a) => (
+          <TouchableOpacity
+            key={a.ruta}
+            style={styles.acceso}
+            onPress={() => router.push(a.ruta)}
+          >
+            <Ionicons name={a.icono} size={22} color={colors.text} />
+            <Text style={styles.accesoLabel}>{a.label}</Text>
+          </TouchableOpacity>
+        ))}
       </View>
 
       {/* Pendientes */}
@@ -256,6 +338,26 @@ const styles = StyleSheet.create({
   },
   resumenCardRutinas: { backgroundColor: "#1a1a2e" },
   resumenCardTareas: { backgroundColor: "#1a2e1a" },
+  resumenCardGastos: { backgroundColor: "#2e1a1a" },
+
+  cuyCard: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 14,
+    backgroundColor: colors.card,
+    borderRadius: 16,
+    padding: 12,
+    marginBottom: 16,
+  },
+  cuyImg: { width: 72, height: 72, borderRadius: 12 },
+  cuyInfo: { flex: 1 },
+  cuyTitulo: {
+    fontSize: 15,
+    fontWeight: "700",
+    color: colors.text,
+    marginBottom: 4,
+  },
+  cuyTexto: { fontSize: 13, color: colors.textSecondary, lineHeight: 18 },
   resumenEmoji: { fontSize: 22, marginBottom: 8 },
   resumenNum: {
     fontSize: 24,
@@ -264,6 +366,17 @@ const styles = StyleSheet.create({
     marginBottom: 2,
   },
   resumenLabel: { fontSize: 12, color: colors.textSecondary },
+
+  accesosRow: { flexDirection: "row", gap: 10, marginBottom: 24 },
+  acceso: {
+    flex: 1,
+    backgroundColor: colors.card,
+    borderRadius: 14,
+    paddingVertical: 14,
+    alignItems: "center",
+    gap: 6,
+  },
+  accesoLabel: { fontSize: 11, color: colors.textSecondary },
 
   seccion: { marginBottom: 24 },
   seccionHeader: {

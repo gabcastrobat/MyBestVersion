@@ -11,7 +11,9 @@ import {
   View,
 } from "react-native";
 import { CategoriaGrid } from "../src/components/CategoriaGrid";
+import { Contadores } from "../src/components/Contadores";
 import { colors } from "../src/constants/colors.js";
+import { useHistorialRutinas } from "../src/hooks/useHistorialRutinas";
 import { useRutinas } from "../src/hooks/useRutinas";
 
 function formatHora(date) {
@@ -30,8 +32,27 @@ const categoriaConfig = {
   Entretenimiento: { icon: "game-controller-outline", color: "#aa44ff" },
 };
 
+// "2026-11-06" → "vie, 6 nov"
+function fechaCorta(fecha) {
+  const [a, m, d] = fecha.split("-").map(Number);
+  return new Date(a, m - 1, d).toLocaleDateString("es-CO", {
+    weekday: "short",
+    day: "numeric",
+    month: "short",
+  });
+}
+
 export default function RutinasScreen() {
   const { rutinas, agregar, toggle, eliminar } = useRutinas();
+  const { estadisticas, recientes, recargar } = useHistorialRutinas();
+  const [historialVisible, setHistorialVisible] = useState(false);
+
+  // Marcar/desmarcar y luego refrescar rachas: el toggle escribe en el
+  // historial, así que hay que volver a leerlo para ver la racha nueva.
+  async function handleToggle(id) {
+    await toggle(id);
+    await recargar();
+  }
   const [modalVisible, setModalVisible] = useState(false);
   const [nombre, setNombre] = useState("");
   const [categoria, setCategoria] = useState("General");
@@ -48,29 +69,31 @@ export default function RutinasScreen() {
   }
 
   const completadas = rutinas.filter((r) => r.completada).length;
-  const categorias = Object.keys(categoriaConfig);
+
+  // Agrupamos el historial por día para mostrarlo en secciones
+  const historialPorDia = [];
+  for (const a of recientes) {
+    const ultimo = historialPorDia[historialPorDia.length - 1];
+    if (ultimo && ultimo.fecha === a.fecha) ultimo.items.push(a);
+    else historialPorDia.push({ fecha: a.fecha, items: [a] });
+  }
 
   return (
     <View style={styles.container}>
-      {/* Header con progreso */}
+      {/* Contadores + acceso al historial */}
       {rutinas.length > 0 && (
-        <View style={styles.progresoBox}>
-          <View style={styles.progresoTextRow}>
-            <Text style={styles.progresoLabel}>Completadas hoy</Text>
-            <Text style={styles.progresoNum}>
-              {completadas}/{rutinas.length}
-            </Text>
-          </View>
-          <View style={styles.progresoBar}>
-            <View
-              style={[
-                styles.progresoFill,
-                { width: `${(completadas / rutinas.length) * 100}%` },
-              ]}
-            />
-          </View>
-        </View>
+        <Contadores
+          pendientes={rutinas.length - completadas}
+          completadas={completadas}
+        />
       )}
+      <TouchableOpacity
+        style={styles.historialBtn}
+        onPress={() => setHistorialVisible(true)}
+      >
+        <Ionicons name="time-outline" size={16} color={colors.textSecondary} />
+        <Text style={styles.historialBtnText}>Ver historial</Text>
+      </TouchableOpacity>
 
       <FlatList
         data={rutinas}
@@ -92,10 +115,11 @@ export default function RutinasScreen() {
         renderItem={({ item }) => {
           const config =
             categoriaConfig[item.categoria] || categoriaConfig.General;
+          const stats = estadisticas[item.id];
           return (
             <TouchableOpacity
               style={[styles.card, item.completada && styles.cardDone]}
-              onPress={() => toggle(item.id)}
+              onPress={() => handleToggle(item.id)}
               activeOpacity={0.7}
             >
               <View
@@ -119,6 +143,12 @@ export default function RutinasScreen() {
                 <Text style={styles.hora}>
                   {item.hora} · {item.categoria}
                 </Text>
+                {stats && (
+                  <Text style={styles.stats}>
+                    {stats.racha > 0 ? `🔥 ${stats.racha} día${stats.racha === 1 ? "" : "s"} · ` : ""}
+                    {stats.total} {stats.total === 1 ? "vez" : "veces"} en total
+                  </Text>
+                )}
               </View>
               {item.completada && (
                 <Ionicons
@@ -205,6 +235,51 @@ export default function RutinasScreen() {
           </View>
         </View>
       </Modal>
+
+      {/* Historial de rutinas realizadas */}
+      <Modal
+        visible={historialVisible}
+        transparent
+        animationType="slide"
+        onRequestClose={() => setHistorialVisible(false)}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={[styles.modal, styles.historialModal]}>
+            <Text style={styles.modalTitulo}>Historial de rutinas</Text>
+            <FlatList
+              data={historialPorDia}
+              keyExtractor={(d) => d.fecha}
+              ListEmptyComponent={
+                <Text style={styles.emptySubtitulo}>
+                  Todavía no hay rutinas completadas.
+                </Text>
+              }
+              renderItem={({ item: dia }) => (
+                <View style={styles.historialDia}>
+                  <Text style={styles.historialFecha}>
+                    {fechaCorta(dia.fecha)}
+                  </Text>
+                  {dia.items.map((a) => (
+                    <Text key={a.id} style={styles.historialItem}>
+                      ✓ {a.nombre}
+                      <Text style={styles.historialHora}>
+                        {"  "}
+                        {new Date(a.completadaEn).toLocaleTimeString("es-CO", {
+                          hour: "2-digit",
+                          minute: "2-digit",
+                        })}
+                      </Text>
+                    </Text>
+                  ))}
+                </View>
+              )}
+            />
+            <TouchableOpacity onPress={() => setHistorialVisible(false)}>
+              <Text style={styles.cancelar}>Cerrar</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </Modal>
     </View>
   );
 }
@@ -213,31 +288,27 @@ const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: colors.background },
   lista: { padding: 16, paddingBottom: 100 },
 
-  progresoBox: {
-    margin: 16,
-    marginBottom: 0,
-    backgroundColor: colors.card,
-    borderRadius: 12,
-    padding: 14,
-  },
-  progresoTextRow: {
+  historialBtn: {
     flexDirection: "row",
-    justifyContent: "space-between",
-    marginBottom: 8,
+    alignItems: "center",
+    alignSelf: "flex-end",
+    gap: 6,
+    marginTop: 10,
+    marginRight: 16,
   },
-  progresoLabel: { fontSize: 13, color: colors.textSecondary },
-  progresoNum: { fontSize: 13, fontWeight: "600", color: colors.success },
-  progresoBar: {
-    height: 5,
-    backgroundColor: colors.input,
-    borderRadius: 3,
-    overflow: "hidden",
+  historialBtnText: { color: colors.textSecondary, fontSize: 13 },
+  stats: { fontSize: 11, color: colors.warning, marginTop: 3 },
+  historialModal: { maxHeight: "75%" },
+  historialDia: { marginBottom: 14 },
+  historialFecha: {
+    color: colors.text,
+    fontWeight: "600",
+    fontSize: 14,
+    marginBottom: 4,
+    textTransform: "capitalize",
   },
-  progresoFill: {
-    height: "100%",
-    backgroundColor: colors.success,
-    borderRadius: 3,
-  },
+  historialItem: { color: colors.textSecondary, fontSize: 14, paddingVertical: 2 },
+  historialHora: { color: colors.textMuted, fontSize: 12 },
 
   emptyBox: { alignItems: "center", marginTop: 80, gap: 10 },
   emptyTitulo: { fontSize: 18, fontWeight: "600", color: colors.textSecondary },
