@@ -13,6 +13,7 @@ import {
 import { BottomSheet } from "../src/components/BottomSheet";
 import { Boton } from "../src/components/Boton";
 import { Campo } from "../src/components/Campo";
+import { EstadoError } from "../src/components/EstadoError";
 import { colors } from "../src/constants/colors";
 import { MAX_ANCLAS } from "../src/constants/planMejora";
 import { usePlan } from "../src/hooks/usePlan";
@@ -30,6 +31,16 @@ export default function PlanScreen() {
   const [nota, setNota] = useState("");
 
   if (p.cargando) return <View style={styles.container} />;
+  if (p.error) {
+    return (
+      <View style={[styles.container, styles.centrado]}>
+        <EstadoError
+          mensaje="No se pudo cargar tu plan. Tus datos siguen guardados en el teléfono."
+          onReintentar={p.reintentar}
+        />
+      </View>
+    );
+  }
 
   const { plan } = p;
   const activas = anclasActivas(plan);
@@ -116,23 +127,24 @@ export default function PlanScreen() {
         </View>
         <Text style={styles.ayuda}>Cosas de una sola vez. Táchalas ya.</Text>
         {plan.victorias.map((v) => (
-          <TouchableOpacity
-            key={v.id}
-            style={styles.fila}
-            onPress={() => p.toggleVictoria(v.id)}
-            onLongPress={() => confirmarQuitarVictoria(v)}
-            accessibilityRole="checkbox"
-            accessibilityState={{ checked: !!v.hecha }}
-            accessibilityLabel={v.nombre}
-          >
-            <Ionicons
-              name={v.hecha ? "checkmark-circle" : "ellipse-outline"}
-              size={22}
-              color={v.hecha ? colors.success : colors.textMuted}
-            />
-            <Text style={[styles.filaText, v.hecha && styles.tachado]}>
-              {v.nombre}
-            </Text>
+          <View key={v.id} style={styles.fila}>
+            <TouchableOpacity
+              style={styles.filaZona}
+              onPress={() => p.toggleVictoria(v.id)}
+              onLongPress={() => confirmarQuitarVictoria(v)}
+              accessibilityRole="checkbox"
+              accessibilityState={{ checked: !!v.hecha }}
+              accessibilityLabel={v.nombre}
+            >
+              <Ionicons
+                name={v.hecha ? "checkmark-circle" : "ellipse-outline"}
+                size={22}
+                color={v.hecha ? colors.success : colors.textMuted}
+              />
+              <Text style={[styles.filaText, v.hecha && styles.tachado]}>
+                {v.nombre}
+              </Text>
+            </TouchableOpacity>
             <TouchableOpacity
               onPress={() => confirmarQuitarVictoria(v)}
               style={styles.iconoBtn}
@@ -142,7 +154,7 @@ export default function PlanScreen() {
             >
               <Ionicons name="close" size={18} color={colors.textMuted} />
             </TouchableOpacity>
-          </TouchableOpacity>
+          </View>
         ))}
         <TouchableOpacity
           style={styles.agregarBtn}
@@ -226,6 +238,7 @@ export default function PlanScreen() {
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: colors.background },
+  centrado: { justifyContent: "center" },
   content: { padding: 16, paddingBottom: 40 },
   flex: { flex: 1 },
 
@@ -279,11 +292,18 @@ const styles = StyleSheet.create({
   fila: {
     flexDirection: "row",
     alignItems: "center",
-    gap: 10,
     backgroundColor: colors.card,
     borderRadius: 12,
-    padding: 12,
+    paddingRight: 6,
     marginBottom: 8,
+  },
+  filaZona: {
+    flex: 1,
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 10,
+    padding: 12,
+    minHeight: 48,
   },
   filaText: { color: colors.text, fontSize: 14, flex: 1 },
   tachado: { textDecorationLine: "line-through", color: colors.textMuted },

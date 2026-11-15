@@ -75,7 +75,7 @@ export default function HoyScreen() {
   const { tareas, toggle: toggleTarea } = useTareas();
   const { perfil } = usePerfil();
   const { gastos } = useGastos();
-  const { plan, marcarHabito } = usePlan();
+  const { plan, marcarHabito, error: errorPlan, reintentar } = usePlan();
 
   // Marcar una tarea: vibración suave solo al completar.
   // (Los hábitos se marcan dentro de TarjetaHabito, que ya vibra por su cuenta.)
@@ -176,6 +176,19 @@ export default function HoyScreen() {
 
       {/* Lista unificada de lo de hoy */}
       <Text style={styles.seccionTitulo}>Para hoy</Text>
+      {errorPlan && (
+        <TouchableOpacity
+          style={styles.avisoError}
+          onPress={reintentar}
+          accessibilityRole="button"
+          accessibilityLabel="No se pudieron cargar tus hábitos. Reintentar"
+        >
+          <Ionicons name="alert-circle-outline" size={20} color={colors.danger} />
+          <Text style={styles.avisoErrorTexto}>
+            No se pudieron cargar tus hábitos. Toca para reintentar.
+          </Text>
+        </TouchableOpacity>
+      )}
       {lista.length === 0 ? (
         <View>
           <EstadoVacio
@@ -338,6 +351,17 @@ const styles = StyleSheet.create({
     marginBottom: 12,
   },
   vacioBotones: { marginTop: 24 },
+  avisoError: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 10,
+    backgroundColor: colors.danger + "22",
+    borderRadius: 12,
+    padding: 12,
+    minHeight: 48,
+    marginBottom: 10,
+  },
+  avisoErrorTexto: { color: colors.text, fontSize: 13, flex: 1 },
 
   fila: { padding: 14, gap: 12 },
   check: {

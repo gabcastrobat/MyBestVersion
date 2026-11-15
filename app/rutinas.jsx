@@ -15,6 +15,7 @@ import { Boton } from "../src/components/Boton";
 import { Campo } from "../src/components/Campo";
 import { CategoriaGrid } from "../src/components/CategoriaGrid";
 import { Contadores } from "../src/components/Contadores";
+import { EstadoError } from "../src/components/EstadoError";
 import { EstadoVacio } from "../src/components/EstadoVacio";
 import { TarjetaHabito } from "../src/components/TarjetaHabito";
 import { colors } from "../src/constants/colors.js";
@@ -64,6 +65,16 @@ export default function HabitosScreen() {
   const [error, setError] = useState("");
 
   if (p.cargando) return <View style={styles.container} />;
+  if (p.error) {
+    return (
+      <View style={[styles.container, styles.centrado]}>
+        <EstadoError
+          mensaje="No se pudieron cargar tus hábitos. Tus datos siguen guardados en el teléfono."
+          onReintentar={p.reintentar}
+        />
+      </View>
+    );
+  }
 
   const { plan } = p;
   const delDia = habitosDeHoy(plan).sort(
@@ -349,22 +360,26 @@ export default function HabitosScreen() {
                 </Text>
               </View>
               {metas.map((m) => (
-                <TouchableOpacity
-                  key={m.id}
-                  style={styles.colaItem}
-                  onPress={() => tocarMetaDeCola(m)}
-                  onLongPress={() => confirmarQuitarMeta(m)}
-                  accessibilityRole="button"
-                  accessibilityLabel={`Meta en cola: ${m.nombre}`}
-                >
-                  <Text style={styles.colaTexto}>{m.nombre}</Text>
-                  {cupoLibre && (
-                    <Ionicons
-                      name="arrow-up-circle-outline"
-                      size={20}
-                      color={colors.textSecondary}
-                    />
-                  )}
+                <View key={m.id} style={styles.colaItem}>
+                  <TouchableOpacity
+                    style={styles.colaZona}
+                    onPress={() => tocarMetaDeCola(m)}
+                    onLongPress={() => confirmarQuitarMeta(m)}
+                    accessibilityRole="button"
+                    accessibilityLabel={`Meta en cola: ${m.nombre}`}
+                    accessibilityHint={
+                      cupoLibre ? "Convierte la meta en hábito ancla" : undefined
+                    }
+                  >
+                    <Text style={styles.colaTexto}>{m.nombre}</Text>
+                    {cupoLibre && (
+                      <Ionicons
+                        name="arrow-up-circle-outline"
+                        size={20}
+                        color={colors.textSecondary}
+                      />
+                    )}
+                  </TouchableOpacity>
                   <TouchableOpacity
                     onPress={() => confirmarQuitarMeta(m)}
                     style={styles.menuBtn}
@@ -378,7 +393,7 @@ export default function HabitosScreen() {
                       color={colors.textSecondary}
                     />
                   </TouchableOpacity>
-                </TouchableOpacity>
+                </View>
               ))}
             </View>
           );
@@ -490,7 +505,8 @@ export default function HabitosScreen() {
                 display="spinner"
                 onChange={(event, selectedDate) => {
                   setShowPicker(false);
-                  if (selectedDate) setHora(selectedDate);
+                  // "set" = confirmó; "dismissed" = canceló (no debe poner hora)
+                  if (event.type === "set" && selectedDate) setHora(selectedDate);
                 }}
               />
             )}
@@ -637,6 +653,7 @@ export default function HabitosScreen() {
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: colors.background },
+  centrado: { justifyContent: "center" },
   content: { padding: 16, paddingBottom: 100 },
 
   cabecera: {
@@ -688,8 +705,15 @@ const styles = StyleSheet.create({
     alignItems: "center",
     backgroundColor: colors.card,
     borderRadius: 10,
-    padding: 12,
+    paddingRight: 4,
     marginBottom: 6,
+  },
+  colaZona: {
+    flex: 1,
+    flexDirection: "row",
+    alignItems: "center",
+    padding: 12,
+    minHeight: 48,
   },
   colaTexto: { color: colors.text, fontSize: 14, flex: 1 },
   agregarBtn: {

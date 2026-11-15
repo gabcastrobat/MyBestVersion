@@ -15,17 +15,30 @@ import * as storage from "../storage/plan";
 // nuevo por si hace falta (ej: para programar un recordatorio).
 export function usePlan() {
   const [plan, setPlan] = useState(null);
+  // Si la lectura (o la migración) falla, la pantalla muestra el error con un
+  // botón de reintentar en vez de quedarse en blanco para siempre.
+  const [error, setError] = useState(null);
+
+  const cargar = useCallback(async (sigueActivo = () => true) => {
+    try {
+      const data = await storage.getPlan();
+      if (!sigueActivo()) return;
+      setPlan(data);
+      setError(null);
+    } catch (e) {
+      console.log("Error cargando el plan:", e);
+      if (sigueActivo()) setError(e);
+    }
+  }, []);
 
   useFocusEffect(
     useCallback(() => {
       let activo = true;
-      storage.getPlan().then((data) => {
-        if (activo) setPlan(data);
-      });
+      cargar(() => activo);
       return () => {
         activo = false;
       };
-    }, []),
+    }, [cargar]),
   );
 
   async function ejecutar(accion, ...args) {
@@ -46,7 +59,9 @@ export function usePlan() {
 
   return {
     plan,
-    cargando: plan === null,
+    cargando: plan === null && !error,
+    error: plan === null ? error : null, // con datos ya cargados no se molesta
+    reintentar: () => cargar(),
     marcarHabito: (id, tipo) => ejecutar(storage.marcarHabitoHoy, id, tipo),
     crearHabito: async (datos) => {
       const nuevo = await ejecutar(storage.crearHabito, datos);
