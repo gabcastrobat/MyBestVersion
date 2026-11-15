@@ -10,6 +10,17 @@ export const AREAS = {
   Ocio: { icon: "game-controller-outline", color: "#aa44ff" },
 };
 
+// Categorías de un hábito: las de las antiguas rutinas + las áreas del plan,
+// en un solo mapa. Así los hábitos migrados conservan su categoría original.
+export const CATEGORIAS = {
+  General: { icon: "star-outline", color: "#888888" },
+  Ejercicio: { icon: "barbell-outline", color: "#ff6b6b" },
+  Estudio: { icon: "book-outline", color: "#4488ff" },
+  Agua: { icon: "water-outline", color: "#44ccff" },
+  Entretenimiento: { icon: "game-controller-outline", color: "#aa44ff" },
+  ...AREAS,
+};
+
 // La regla de oro: como máximo 3 hábitos ancla activos a la vez.
 // Para meter uno nuevo, otro tiene que volverse automático primero.
 export const MAX_ANCLAS = 3;

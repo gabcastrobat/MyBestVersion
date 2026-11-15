@@ -13,12 +13,15 @@ import {
 } from "react-native";
 import { colors } from "../src/constants/colors.js";
 import { usePerfil } from "../src/hooks/usePerfil";
-import { useRutinas } from "../src/hooks/useRutinas";
+import { usePlan } from "../src/hooks/usePlan";
 import { useTareas } from "../src/hooks/useTareas";
+import { habitosDeHoy } from "../src/storage/plan";
+import { hoy } from "../src/utils/fechas";
 
 export default function PerfilScreen() {
   const { perfil, guardar } = usePerfil();
-  const { rutinas } = useRutinas();
+  const { plan } = usePlan();
+  const habitos = plan ? habitosDeHoy(plan) : [];
   const { tareas } = useTareas();
   const [editando, setEditando] = useState(false);
   const [form, setForm] = useState({
@@ -58,7 +61,7 @@ export default function PerfilScreen() {
   const nombre = perfil.nombre || "Tu nombre";
   const inicial = nombre.charAt(0).toUpperCase();
 
-  const rutinasCompletadas = rutinas.filter((r) => r.completada).length;
+  const habitosHechosHoy = habitos.filter((h) => h.dias[hoy()]).length;
   const tareasPendientes = tareas.filter((t) => !t.completada).length;
 
   return (
@@ -101,12 +104,12 @@ export default function PerfilScreen() {
       {!editando && (
         <View style={styles.statsRow}>
           <View style={styles.statCard}>
-            <Text style={styles.statNum}>{rutinas.length}</Text>
-            <Text style={styles.statLabel}>Rutinas</Text>
+            <Text style={styles.statNum}>{habitos.length}</Text>
+            <Text style={styles.statLabel}>Hábitos</Text>
           </View>
           <View style={styles.statDivider} />
           <View style={styles.statCard}>
-            <Text style={styles.statNum}>{rutinasCompletadas}</Text>
+            <Text style={styles.statNum}>{habitosHechosHoy}</Text>
             <Text style={styles.statLabel}>Completadas</Text>
           </View>
           <View style={styles.statDivider} />

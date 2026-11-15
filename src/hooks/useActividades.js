@@ -3,7 +3,7 @@ import { useCallback, useState } from "react";
 import { getActividadesPorFecha } from "../storage/actividades";
 
 // Hook del historial: devuelve lo que se completó en una fecha ("YYYY-MM-DD").
-// Mismo patrón que useTareas/useRutinas: recarga cada vez que la pestaña
+// Mismo patrón que useTareas: recarga cada vez que la pestaña
 // gana foco, así ves al instante lo que marcaste en otra pestaña.
 export function useActividades(fecha) {
   const [actividades, setActividades] = useState([]);
