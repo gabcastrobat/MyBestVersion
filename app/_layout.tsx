@@ -25,6 +25,7 @@ const OCULTAS = [
   { name: "gastos", title: "Gastos" },
   { name: "perfil", title: "Perfil" },
   { name: "entreno", title: "Entreno en curso" },
+  { name: "plan", title: "Mi plan" },
 ];
 
 export default function RootLayout() {

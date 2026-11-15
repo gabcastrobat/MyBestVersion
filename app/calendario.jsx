@@ -35,6 +35,7 @@ const TIPOS = {
   rutina: { color: colors.info, icono: "🔁", label: "Rutina" },
   tarea: { color: colors.success, icono: "✅", label: "Tarea" },
   entreno: { color: colors.warning, icono: "🏋️", label: "Entreno" },
+  habito: { color: colors.danger, icono: "🔥", label: "Hábito" },
 };
 
 // "2026-11-06" → "viernes, 6 de noviembre"
@@ -98,6 +99,7 @@ export default function CalendarioScreen() {
   const rutinasDia = actividades.filter((a) => a.tipo === "rutina").length;
   const tareasDia = actividades.filter((a) => a.tipo === "tarea").length;
   const entrenosDia = actividades.filter((a) => a.tipo === "entreno").length;
+  const habitosDia = actividades.filter((a) => a.tipo === "habito").length;
 
   return (
     <ScrollView style={styles.container} contentContainerStyle={styles.content}>
@@ -153,6 +155,9 @@ export default function CalendarioScreen() {
         {rutinasDia} rutina{rutinasDia === 1 ? "" : "s"} · {tareasDia} tarea
         {tareasDia === 1 ? "" : "s"} · {entrenosDia} entreno
         {entrenosDia === 1 ? "" : "s"}
+        {habitosDia > 0
+          ? ` · ${habitosDia} hábito${habitosDia === 1 ? "" : "s"}`
+          : ""}
       </Text>
 
       {actividades.length === 0 ? (

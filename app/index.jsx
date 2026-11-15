@@ -17,6 +17,7 @@ import { useTareas } from "../src/hooks/useTareas";
 // Accesos rápidos: un toque para llegar a cualquier sección,
 // incluidas Gastos y Perfil, que ya no están en la barra de pestañas.
 const ACCESOS = [
+  { ruta: "/plan", icono: "trophy-outline", label: "Mi plan" },
   { ruta: "/calendario", icono: "calendar-outline", label: "Calendario" },
   { ruta: "/gimnasio", icono: "barbell-outline", label: "Gym" },
   { ruta: "/alarmas", icono: "alarm-outline", label: "Alarmas" },
