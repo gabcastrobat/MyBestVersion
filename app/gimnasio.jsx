@@ -141,7 +141,12 @@ export default function GimnasioScreen() {
         {/* Rutinas de gym */}
         <View style={styles.seccionHeader}>
           <Text style={styles.seccionTitulo}>Mis rutinas de gym</Text>
-          <TouchableOpacity onPress={abrirModal}>
+          <TouchableOpacity
+            onPress={abrirModal}
+            hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
+            accessibilityRole="button"
+            accessibilityLabel="Nueva rutina de gym"
+          >
             <Text style={styles.link}>+ Nueva</Text>
           </TouchableOpacity>
         </View>
@@ -161,10 +166,22 @@ export default function GimnasioScreen() {
                   {p.ejercicios.map((e) => e.nombre).join(" · ")}
                 </Text>
               </View>
-              <TouchableOpacity onPress={() => confirmarEliminar(p)} style={styles.iconBtn}>
+              <TouchableOpacity
+                onPress={() => confirmarEliminar(p)}
+                style={styles.iconBtn}
+                hitSlop={{ top: 10, bottom: 10, left: 8, right: 8 }}
+                accessibilityRole="button"
+                accessibilityLabel={`Eliminar rutina ${p.nombre}`}
+              >
                 <Ionicons name="trash-outline" size={18} color={colors.textMuted} />
               </TouchableOpacity>
-              <TouchableOpacity style={styles.empezarBtn} onPress={() => empezar(p)}>
+              <TouchableOpacity
+                style={styles.empezarBtn}
+                onPress={() => empezar(p)}
+                hitSlop={{ top: 6, bottom: 6, left: 6, right: 6 }}
+                accessibilityRole="button"
+                accessibilityLabel={`Empezar entreno ${p.nombre}`}
+              >
                 <Ionicons name="play" size={16} color={colors.background} />
               </TouchableOpacity>
             </View>
@@ -242,6 +259,9 @@ export default function GimnasioScreen() {
                   onPress={() =>
                     setEjercicios((prev) => prev.filter((_, j) => j !== i))
                   }
+                  hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
+                  accessibilityRole="button"
+                  accessibilityLabel={`Quitar ejercicio ${e}`}
                 >
                   <Ionicons name="close" size={18} color={colors.textMuted} />
                 </TouchableOpacity>
@@ -257,7 +277,12 @@ export default function GimnasioScreen() {
                 onSubmitEditing={agregarEjercicioALista}
                 returnKeyType="done"
               />
-              <TouchableOpacity style={styles.masBtn} onPress={agregarEjercicioALista}>
+              <TouchableOpacity
+                style={styles.masBtn}
+                onPress={agregarEjercicioALista}
+                accessibilityRole="button"
+                accessibilityLabel="Agregar ejercicio a la lista"
+              >
                 <Ionicons name="add" size={22} color={colors.background} />
               </TouchableOpacity>
             </View>
