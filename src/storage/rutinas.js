@@ -58,6 +58,28 @@ export async function toggleRutina(id) {
   return actualizadas;
 }
 
+// Edita nombre, hora y/o categoría. `cambios` = { nombre?, hora?, categoria? }
+// No toca id ni completada: así editar no altera el progreso de hoy.
+export async function updateRutina(id, cambios) {
+  const nombre = cambios.nombre?.trim();
+  if (cambios.nombre !== undefined && !nombre) {
+    throw new Error("El nombre de la rutina no puede estar vacío");
+  }
+  const rutinas = await getRutinas();
+  const actualizadas = rutinas.map((r) =>
+    r.id === id
+      ? {
+          ...r,
+          ...(nombre !== undefined && { nombre }),
+          ...(cambios.hora && { hora: cambios.hora }),
+          ...(cambios.categoria && { categoria: cambios.categoria }),
+        }
+      : r,
+  );
+  await AsyncStorage.setItem(KEY, JSON.stringify(actualizadas));
+  return actualizadas;
+}
+
 // Elimina una rutina
 export async function deleteRutina(id) {
   const rutinas = await getRutinas();

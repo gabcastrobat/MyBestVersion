@@ -2,7 +2,6 @@ import { Ionicons } from "@expo/vector-icons";
 import { useState } from "react";
 import {
   Alert,
-  Modal,
   ScrollView,
   StyleSheet,
   Text,
@@ -10,6 +9,8 @@ import {
   TouchableOpacity,
   View,
 } from "react-native";
+import { BottomSheet } from "../src/components/BottomSheet";
+import { Boton } from "../src/components/Boton";
 import { CategoriaGrid } from "../src/components/CategoriaGrid";
 import { colors } from "../src/constants/colors";
 import { AREAS, MAX_ANCLAS } from "../src/constants/planMejora";
@@ -68,6 +69,29 @@ export default function PlanScreen() {
     }
   }
 
+  // Explicación de las reglas del plan, para quien no recuerda cómo funciona
+  function explicarReglas() {
+    Alert.alert(
+      "Cómo funciona",
+      `• Máximo ${MAX_ANCLAS} hábitos ancla a la vez: así te enfocas en pocos.\n` +
+        "• Cada uno tiene una versión mínima para los días malos: hacerla también cuenta.\n" +
+        "• Cuando un hábito ya te sale solo, márcalo como automático (⋯) y se libera el cupo.\n" +
+        "• Las metas que esperan están en la cola; ahí eliges la siguiente.\n" +
+        "• Los domingos haces la revisión de la semana.",
+    );
+  }
+
+  function confirmarQuitarVictoria(v) {
+    Alert.alert("Quitar victoria", `¿Borrar "${v.nombre}"?`, [
+      { text: "Cancelar", style: "cancel" },
+      {
+        text: "Borrar",
+        style: "destructive",
+        onPress: () => p.eliminarVictoria(v.id),
+      },
+    ]);
+  }
+
   function opcionesHabito(h) {
     Alert.alert(h.nombre, "¿Qué quieres hacer con este hábito?", [
       {
@@ -83,7 +107,7 @@ export default function PlanScreen() {
     if (!cupoLibre) {
       Alert.alert(
         "Regla de oro",
-        `Ya tienes ${MAX_ANCLAS} hábitos ancla. Cuando uno te salga en automático, mantenlo presionado y márcalo: ahí se libera el cupo.`,
+        `Ya tienes ${MAX_ANCLAS} hábitos ancla. Cuando uno te salga en automático, toca ⋯ en ese hábito y márcalo: ahí se libera el cupo.`,
       );
       return;
     }
@@ -124,12 +148,27 @@ export default function PlanScreen() {
         {/* ── Hábitos ancla ── */}
         <View style={styles.seccionHeader}>
           <Text style={styles.seccionTitulo}>Hábitos ancla</Text>
-          <Text style={styles.contador}>
-            {activas.length}/{MAX_ANCLAS}
-          </Text>
+          <View style={styles.headerDerecha}>
+            <Text style={styles.contador}>
+              {activas.length}/{MAX_ANCLAS}
+            </Text>
+            <TouchableOpacity
+              onPress={explicarReglas}
+              style={styles.iconoBtn}
+              hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+              accessibilityRole="button"
+              accessibilityLabel="Cómo funciona el plan"
+            >
+              <Ionicons
+                name="information-circle-outline"
+                size={22}
+                color={colors.textSecondary}
+              />
+            </TouchableOpacity>
+          </View>
         </View>
         <Text style={styles.ayuda}>
-          Mantén presionado un hábito cuando ya te salga solo.
+          Toca ⋯ en un hábito cuando ya te salga solo.
         </Text>
 
         {activas.length === 0 && (
@@ -160,6 +199,19 @@ export default function PlanScreen() {
                   <Text style={styles.nombre}>{h.nombre}</Text>
                   <Text style={styles.sub}>Mínimo: {h.minimo}</Text>
                 </View>
+                <TouchableOpacity
+                  onPress={() => opcionesHabito(h)}
+                  style={styles.iconoBtn}
+                  hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                  accessibilityRole="button"
+                  accessibilityLabel={`Opciones del hábito ${h.nombre}`}
+                >
+                  <Ionicons
+                    name="ellipsis-horizontal"
+                    size={20}
+                    color={colors.textSecondary}
+                  />
+                </TouchableOpacity>
               </View>
 
               {/* Semana: L M M J V S D */}
@@ -247,7 +299,10 @@ export default function PlanScreen() {
             key={v.id}
             style={styles.fila}
             onPress={() => p.toggleVictoria(v.id)}
-            onLongPress={() => p.eliminarVictoria(v.id)}
+            onLongPress={() => confirmarQuitarVictoria(v)}
+            accessibilityRole="checkbox"
+            accessibilityState={{ checked: !!v.hecha }}
+            accessibilityLabel={v.nombre}
           >
             <Ionicons
               name={v.hecha ? "checkmark-circle" : "ellipse-outline"}
@@ -257,6 +312,19 @@ export default function PlanScreen() {
             <Text style={[styles.filaText, v.hecha && styles.tachado]}>
               {v.nombre}
             </Text>
+            <TouchableOpacity
+              onPress={() => confirmarQuitarVictoria(v)}
+              style={styles.iconoBtn}
+              hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+              accessibilityRole="button"
+              accessibilityLabel={`Borrar victoria ${v.nombre}`}
+            >
+              <Ionicons
+                name="close"
+                size={18}
+                color={colors.textMuted}
+              />
+            </TouchableOpacity>
           </TouchableOpacity>
         ))}
         <TouchableOpacity
@@ -274,7 +342,7 @@ export default function PlanScreen() {
         <Text style={styles.ayuda}>
           {cupoLibre
             ? "Tienes un cupo libre: toca una meta para volverla hábito ancla."
-            : "Esperan su turno. Mantén presionado para borrar."}
+            : "Esperan su turno. Toca ⋯ para borrar una."}
         </Text>
         {Object.entries(AREAS).map(([nombreArea, cfg]) => {
           const metas = plan.cola.filter((c) => c.area === nombreArea);
@@ -302,6 +370,19 @@ export default function PlanScreen() {
                       color={colors.textSecondary}
                     />
                   )}
+                  <TouchableOpacity
+                    onPress={() => confirmarQuitar(m)}
+                    style={styles.iconoBtn}
+                    hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                    accessibilityRole="button"
+                    accessibilityLabel={`Borrar meta ${m.nombre}`}
+                  >
+                    <Ionicons
+                      name="ellipsis-horizontal"
+                      size={18}
+                      color={colors.textSecondary}
+                    />
+                  </TouchableOpacity>
                 </TouchableOpacity>
               ))}
             </View>
@@ -357,12 +438,19 @@ export default function PlanScreen() {
       </ScrollView>
 
       {/* ── Modal: agregar a la cola / victoria / promover ── */}
-      <Modal visible={modal !== null} transparent animationType="slide">
-        <View style={styles.modalOverlay}>
-          <View style={styles.modal}>
+      <BottomSheet
+        visible={modal !== null}
+        onClose={() => setModal(null)}
+        titulo={
+          modal?.tipo === "promover"
+            ? "Nuevo hábito ancla"
+            : modal?.tipo === "cola"
+              ? "Meta a la cola"
+              : "Victoria rápida"
+        }
+      >
             {modal?.tipo === "promover" ? (
               <>
-                <Text style={styles.modalTitulo}>Nuevo hábito ancla</Text>
                 <Text style={styles.nombre}>{modal.meta.nombre}</Text>
                 <Text style={styles.label}>
                   Versión mínima (para los días malos)
@@ -399,9 +487,6 @@ export default function PlanScreen() {
               </>
             ) : (
               <>
-                <Text style={styles.modalTitulo}>
-                  {modal?.tipo === "cola" ? "Meta a la cola" : "Victoria rápida"}
-                </Text>
                 <TextInput
                   style={styles.input}
                   placeholder={
@@ -426,15 +511,13 @@ export default function PlanScreen() {
               </>
             )}
 
-            <TouchableOpacity style={styles.boton} onPress={guardarModal}>
-              <Text style={styles.botonText}>Guardar</Text>
-            </TouchableOpacity>
-            <TouchableOpacity onPress={() => setModal(null)}>
-              <Text style={styles.cancelar}>Cancelar</Text>
-            </TouchableOpacity>
-          </View>
-        </View>
-      </Modal>
+            <Boton titulo="Guardar" onPress={guardarModal} />
+            <Boton
+              titulo="Cancelar"
+              variante="texto"
+              onPress={() => setModal(null)}
+            />
+      </BottomSheet>
     </View>
   );
 }
@@ -463,6 +546,8 @@ const styles = StyleSheet.create({
   },
   seccionTitulo: { fontSize: 17, fontWeight: "700", color: colors.text },
   contador: { fontSize: 13, fontWeight: "600", color: colors.textSecondary },
+  headerDerecha: { flexDirection: "row", alignItems: "center", gap: 8 },
+  iconoBtn: { padding: 6 },
   ayuda: {
     fontSize: 12,
     color: colors.textMuted,
@@ -575,23 +660,6 @@ const styles = StyleSheet.create({
   },
   ultimaNota: { color: colors.textMuted, fontSize: 12, lineHeight: 18 },
 
-  modalOverlay: {
-    flex: 1,
-    backgroundColor: "rgba(0,0,0,0.7)",
-    justifyContent: "flex-end",
-  },
-  modal: {
-    backgroundColor: colors.card,
-    borderTopLeftRadius: 24,
-    borderTopRightRadius: 24,
-    padding: 24,
-  },
-  modalTitulo: {
-    fontSize: 18,
-    fontWeight: "700",
-    color: colors.text,
-    marginBottom: 16,
-  },
   label: {
     color: colors.textSecondary,
     fontSize: 13,
@@ -615,5 +683,4 @@ const styles = StyleSheet.create({
     marginBottom: 10,
   },
   botonText: { color: colors.background, fontWeight: "600", fontSize: 15 },
-  cancelar: { color: colors.textSecondary, textAlign: "center", fontSize: 14 },
 });

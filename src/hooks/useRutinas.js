@@ -10,6 +10,7 @@ import {
   resetDiarioSiNecesario,
   saveRutina,
   toggleRutina,
+  updateRutina,
 } from "../storage/rutinas";
 
 export function useRutinas() {
@@ -44,11 +45,22 @@ export function useRutinas() {
     setRutinas(actualizadas);
   }
 
+  // Editar también reprograma el recordatorio diario con la hora nueva
+  async function editar(id, cambios) {
+    const actualizadas = await updateRutina(id, cambios);
+    setRutinas(actualizadas);
+    const r = actualizadas.find((x) => x.id === id);
+    if (r) {
+      await cancelarRecordatorio(id);
+      await programarRecordatorio(id, r.nombre, r.hora);
+    }
+  }
+
   async function eliminar(id) {
     await cancelarRecordatorio(id);
     const filtradas = await deleteRutina(id);
     setRutinas(filtradas);
   }
 
-  return { rutinas, cargando, agregar, toggle, eliminar };
+  return { rutinas, cargando, agregar, toggle, editar, eliminar };
 }

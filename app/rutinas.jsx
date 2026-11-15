@@ -5,18 +5,22 @@ import { useState } from "react";
 import {
   Alert,
   FlatList,
-  Modal,
   StyleSheet,
   Text,
-  TextInput,
   TouchableOpacity,
   View,
 } from "react-native";
+import { BottomSheet } from "../src/components/BottomSheet";
+import { Boton } from "../src/components/Boton";
+import { Campo } from "../src/components/Campo";
 import { CategoriaGrid } from "../src/components/CategoriaGrid";
 import { Contadores } from "../src/components/Contadores";
+import { EstadoVacio } from "../src/components/EstadoVacio";
+import { FilaMarcable } from "../src/components/FilaMarcable";
 import { colors } from "../src/constants/colors.js";
 import { useHistorialRutinas } from "../src/hooks/useHistorialRutinas";
 import { useRutinas } from "../src/hooks/useRutinas";
+import { parseHora } from "../src/storage/notificaciones";
 
 function formatHora(date) {
   let horas = date.getHours();
@@ -24,6 +28,14 @@ function formatHora(date) {
   const periodo = horas >= 12 ? "PM" : "AM";
   horas = horas % 12 || 12;
   return `${horas}:${minutos.toString().padStart(2, "0")} ${periodo}`;
+}
+
+// "7:30 PM" → Date de hoy a esa hora (para precargar el selector al editar)
+function horaADate(hora) {
+  const { hora24, minutos } = parseHora(hora);
+  const d = new Date();
+  d.setHours(hora24, minutos, 0, 0);
+  return d;
 }
 
 const categoriaConfig = {
@@ -45,9 +57,19 @@ function fechaCorta(fecha) {
 }
 
 export default function RutinasScreen() {
-  const { rutinas, agregar, toggle, eliminar } = useRutinas();
+  const { rutinas, agregar, toggle, editar, eliminar } = useRutinas();
   const { estadisticas, recientes, recargar } = useHistorialRutinas();
   const [historialVisible, setHistorialVisible] = useState(false);
+
+  const [modalVisible, setModalVisible] = useState(false);
+  // null = creando una rutina nueva; un id = editando esa rutina
+  // (mismo patrón que en Tareas: un solo modal para crear y editar).
+  const [editandoId, setEditandoId] = useState(null);
+  const [nombre, setNombre] = useState("");
+  const [categoria, setCategoria] = useState("General");
+  const [hora, setHora] = useState(new Date());
+  const [showPicker, setShowPicker] = useState(false);
+  const [error, setError] = useState("");
 
   // Marcar/desmarcar y luego refrescar rachas: el toggle escribe en el
   // historial, así que hay que volver a leerlo para ver la racha nueva.
@@ -73,23 +95,44 @@ export default function RutinasScreen() {
       ],
     );
   }
-  const [modalVisible, setModalVisible] = useState(false);
-  const [nombre, setNombre] = useState("");
-  const [categoria, setCategoria] = useState("General");
-  const [hora, setHora] = useState(new Date());
-  const [showPicker, setShowPicker] = useState(false);
-  const [error, setError] = useState("");
 
-  async function handleAgregar() {
+  function abrirNueva() {
+    setEditandoId(null);
+    setNombre("");
+    setCategoria("General");
+    setHora(new Date());
+    setShowPicker(false);
+    setError("");
+    setModalVisible(true);
+  }
+
+  function abrirEdicion(rutina) {
+    setEditandoId(rutina.id);
+    setNombre(rutina.nombre);
+    setCategoria(rutina.categoria);
+    setHora(horaADate(rutina.hora));
+    setShowPicker(false);
+    setError("");
+    setModalVisible(true);
+  }
+
+  async function handleGuardar() {
     if (!nombre.trim()) {
       setError("Escribe un nombre para la rutina");
       return;
     }
-    await agregar({ nombre, hora: formatHora(hora), categoria });
-    setNombre("");
-    setCategoria("General");
-    setHora(new Date());
-    setModalVisible(false);
+    try {
+      if (editandoId)
+        await editar(editandoId, {
+          nombre,
+          hora: formatHora(hora),
+          categoria,
+        });
+      else await agregar({ nombre, hora: formatHora(hora), categoria });
+      setModalVisible(false);
+    } catch (e) {
+      setError(e.message || "No se pudo guardar la rutina");
+    }
   }
 
   const completadas = rutinas.filter((r) => r.completada).length;
@@ -114,6 +157,9 @@ export default function RutinasScreen() {
       <TouchableOpacity
         style={styles.historialBtn}
         onPress={() => setHistorialVisible(true)}
+        hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+        accessibilityRole="button"
+        accessibilityLabel="Ver historial de rutinas"
       >
         <Ionicons name="time-outline" size={16} color={colors.textSecondary} />
         <Text style={styles.historialBtnText}>Ver historial</Text>
@@ -124,199 +170,204 @@ export default function RutinasScreen() {
         keyExtractor={(item) => item.id}
         contentContainerStyle={styles.lista}
         ListEmptyComponent={
-          <View style={styles.emptyBox}>
-            <Ionicons
-              name="repeat-outline"
-              size={52}
-              color={colors.textMuted}
-            />
-            <Text style={styles.emptyTitulo}>Sin rutinas aún</Text>
-            <Text style={styles.emptySubtitulo}>
-              Agrega tu primera rutina diaria
-            </Text>
-          </View>
+          <EstadoVacio
+            icono="repeat-outline"
+            titulo="Sin rutinas aún"
+            subtitulo="Agrega tu primera rutina diaria"
+          />
         }
         renderItem={({ item }) => {
           const config =
             categoriaConfig[item.categoria] || categoriaConfig.General;
           const stats = estadisticas[item.id];
           return (
-            <TouchableOpacity
-              style={[styles.card, item.completada && styles.cardDone]}
+            <FilaMarcable
+              completada={item.completada}
               onPress={() => handleToggle(item)}
-              activeOpacity={0.7}
-              accessibilityRole="checkbox"
-              accessibilityState={{ checked: item.completada }}
-              accessibilityLabel={`${item.nombre}, ${item.hora}`}
-            >
-              <View
-                style={[
-                  styles.iconBox,
-                  { backgroundColor: config.color + "22" },
-                ]}
-              >
-                <Ionicons
-                  name={config.icon}
-                  size={22}
-                  color={item.completada ? colors.textMuted : config.color}
-                />
-              </View>
-              <View style={styles.cardInfo}>
-                <Text
-                  style={[styles.nombre, item.completada && styles.completada]}
+              etiqueta={`${item.nombre}, ${item.hora}`}
+              style={styles.fila}
+              izquierda={
+                <View
+                  style={[
+                    styles.iconBox,
+                    { backgroundColor: config.color + "22" },
+                  ]}
                 >
-                  {item.nombre}
-                </Text>
-                <Text style={styles.hora}>
-                  {item.hora} · {item.categoria}
-                </Text>
-                {stats && (
-                  <Text style={styles.stats}>
-                    {stats.racha > 0 ? `🔥 ${stats.racha} día${stats.racha === 1 ? "" : "s"} · ` : ""}
-                    {stats.total} {stats.total === 1 ? "vez" : "veces"} en total
-                  </Text>
-                )}
-              </View>
-              {item.completada && (
-                <Ionicons
-                  name="checkmark-circle"
-                  size={22}
-                  color={colors.success}
-                />
-              )}
-              <TouchableOpacity
-                onPress={() => confirmarEliminar(item)}
-                style={styles.deleteBtn}
-                hitSlop={{ top: 12, bottom: 12, left: 8, right: 8 }}
-                accessibilityRole="button"
-                accessibilityLabel={`Eliminar rutina ${item.nombre}`}
+                  <Ionicons
+                    name={config.icon}
+                    size={22}
+                    color={item.completada ? colors.textMuted : config.color}
+                  />
+                </View>
+              }
+              acciones={
+                <>
+                  {item.completada && (
+                    <Ionicons
+                      name="checkmark-circle"
+                      size={22}
+                      color={colors.success}
+                    />
+                  )}
+                  <TouchableOpacity
+                    onPress={() => abrirEdicion(item)}
+                    style={styles.accionBtn}
+                    hitSlop={{ top: 12, bottom: 12, left: 4, right: 4 }}
+                    accessibilityRole="button"
+                    accessibilityLabel={`Editar rutina ${item.nombre}`}
+                  >
+                    <Ionicons
+                      name="create-outline"
+                      size={18}
+                      color={colors.textMuted}
+                    />
+                  </TouchableOpacity>
+                  <TouchableOpacity
+                    onPress={() => confirmarEliminar(item)}
+                    style={styles.accionBtn}
+                    hitSlop={{ top: 12, bottom: 12, left: 4, right: 8 }}
+                    accessibilityRole="button"
+                    accessibilityLabel={`Eliminar rutina ${item.nombre}`}
+                  >
+                    <Ionicons
+                      name="trash-outline"
+                      size={18}
+                      color={colors.textMuted}
+                    />
+                  </TouchableOpacity>
+                </>
+              }
+            >
+              <Text
+                style={[styles.nombre, item.completada && styles.completada]}
               >
-                <Ionicons
-                  name="trash-outline"
-                  size={18}
-                  color={colors.textMuted}
-                />
-              </TouchableOpacity>
-            </TouchableOpacity>
+                {item.nombre}
+              </Text>
+              <Text style={styles.hora}>
+                {item.hora} · {item.categoria}
+              </Text>
+              {stats && (
+                <Text style={styles.stats}>
+                  {stats.racha > 0
+                    ? `🔥 ${stats.racha} día${stats.racha === 1 ? "" : "s"} · `
+                    : ""}
+                  {stats.total} {stats.total === 1 ? "vez" : "veces"} en total
+                </Text>
+              )}
+            </FilaMarcable>
           );
         }}
       />
 
       <TouchableOpacity
         style={styles.fab}
-        onPress={() => {
-          setError("");
-          setModalVisible(true);
-        }}
+        onPress={abrirNueva}
+        accessibilityRole="button"
       >
         <Ionicons name="add" size={22} color={colors.background} />
         <Text style={styles.fabText}>Nueva rutina</Text>
       </TouchableOpacity>
 
-      <Modal visible={modalVisible} transparent animationType="slide">
-        <View style={styles.modalOverlay}>
-          <View style={styles.modal}>
-            <Text style={styles.modalTitulo}>Nueva Rutina</Text>
+      <BottomSheet
+        visible={modalVisible}
+        onClose={() => setModalVisible(false)}
+        titulo={editandoId ? "Editar rutina" : "Nueva rutina"}
+      >
+        <Campo
+          placeholder="Nombre (ej: Ejercicio)"
+          value={nombre}
+          onChangeText={(t) => {
+            setNombre(t);
+            if (error) setError("");
+          }}
+          error={error}
+        />
 
-            <TextInput
-              style={styles.input}
-              placeholder="Nombre (ej: Ejercicio)"
-              placeholderTextColor={colors.textMuted}
-              value={nombre}
-              onChangeText={(t) => {
-                setNombre(t);
-                if (error) setError("");
-              }}
-            />
-            {error ? <Text style={styles.error}>{error}</Text> : null}
+        <Text style={styles.label}>Hora</Text>
+        <TouchableOpacity
+          style={styles.horaBtn}
+          onPress={() => setShowPicker(true)}
+          accessibilityRole="button"
+          accessibilityLabel={`Hora de la rutina: ${formatHora(hora)}`}
+        >
+          <Ionicons
+            name="time-outline"
+            size={18}
+            color={colors.textSecondary}
+          />
+          <Text style={styles.horaBtnText}>{formatHora(hora)}</Text>
+        </TouchableOpacity>
 
-            <Text style={styles.label}>Hora</Text>
-            <TouchableOpacity
-              style={styles.horaBtn}
-              onPress={() => setShowPicker(true)}
-            >
-              <Ionicons
-                name="time-outline"
-                size={18}
-                color={colors.textSecondary}
-              />
-              <Text style={styles.horaBtnText}>{formatHora(hora)}</Text>
-            </TouchableOpacity>
+        {showPicker && (
+          <DateTimePicker
+            value={hora}
+            mode="time"
+            is24Hour={false}
+            display="spinner"
+            onChange={(event, selectedDate) => {
+              setShowPicker(false);
+              if (selectedDate) setHora(selectedDate);
+            }}
+          />
+        )}
 
-            {showPicker && (
-              <DateTimePicker
-                value={hora}
-                mode="time"
-                is24Hour={false}
-                display="spinner"
-                onChange={(event, selectedDate) => {
-                  setShowPicker(false);
-                  if (selectedDate) setHora(selectedDate);
-                }}
-              />
-            )}
+        <Text style={styles.label}>Categoría</Text>
+        <CategoriaGrid
+          opciones={categoriaConfig}
+          seleccionada={categoria}
+          onSeleccionar={setCategoria}
+        />
 
-            <Text style={styles.label}>Categoría</Text>
-            <CategoriaGrid
-              opciones={categoriaConfig}
-              seleccionada={categoria}
-              onSeleccionar={setCategoria}
-            />
-
-            <TouchableOpacity style={styles.boton} onPress={handleAgregar}>
-              <Text style={styles.botonText}>Guardar rutina</Text>
-            </TouchableOpacity>
-            <TouchableOpacity onPress={() => setModalVisible(false)}>
-              <Text style={styles.cancelar}>Cancelar</Text>
-            </TouchableOpacity>
-          </View>
-        </View>
-      </Modal>
+        <Boton
+          titulo={editandoId ? "Guardar cambios" : "Guardar rutina"}
+          onPress={handleGuardar}
+        />
+        <Boton
+          titulo="Cancelar"
+          variante="texto"
+          onPress={() => setModalVisible(false)}
+        />
+      </BottomSheet>
 
       {/* Historial de rutinas realizadas */}
-      <Modal
+      <BottomSheet
         visible={historialVisible}
-        transparent
-        animationType="slide"
-        onRequestClose={() => setHistorialVisible(false)}
+        onClose={() => setHistorialVisible(false)}
+        titulo="Historial de rutinas"
+        style={styles.historialModal}
       >
-        <View style={styles.modalOverlay}>
-          <View style={[styles.modal, styles.historialModal]}>
-            <Text style={styles.modalTitulo}>Historial de rutinas</Text>
-            <FlatList
-              data={historialPorDia}
-              keyExtractor={(d) => d.fecha}
-              ListEmptyComponent={
-                <Text style={styles.emptySubtitulo}>
-                  Todavía no hay rutinas completadas.
-                </Text>
-              }
-              renderItem={({ item: dia }) => (
-                <View style={styles.historialDia}>
-                  <Text style={styles.historialFecha}>
-                    {fechaCorta(dia.fecha)}
+        <FlatList
+          data={historialPorDia}
+          keyExtractor={(d) => d.fecha}
+          ListEmptyComponent={
+            <Text style={styles.vacioHistorial}>
+              Todavía no hay rutinas completadas.
+            </Text>
+          }
+          renderItem={({ item: dia }) => (
+            <View style={styles.historialDia}>
+              <Text style={styles.historialFecha}>{fechaCorta(dia.fecha)}</Text>
+              {dia.items.map((a) => (
+                <Text key={a.id} style={styles.historialItem}>
+                  ✓ {a.nombre}
+                  <Text style={styles.historialHora}>
+                    {"  "}
+                    {new Date(a.completadaEn).toLocaleTimeString("es-CO", {
+                      hour: "2-digit",
+                      minute: "2-digit",
+                    })}
                   </Text>
-                  {dia.items.map((a) => (
-                    <Text key={a.id} style={styles.historialItem}>
-                      ✓ {a.nombre}
-                      <Text style={styles.historialHora}>
-                        {"  "}
-                        {new Date(a.completadaEn).toLocaleTimeString("es-CO", {
-                          hour: "2-digit",
-                          minute: "2-digit",
-                        })}
-                      </Text>
-                    </Text>
-                  ))}
-                </View>
-              )}
-            />
-            <TouchableOpacity onPress={() => setHistorialVisible(false)}>
-              <Text style={styles.cancelar}>Cerrar</Text>
-            </TouchableOpacity>
-          </View>
-        </View>
-      </Modal>
+                </Text>
+              ))}
+            </View>
+          )}
+        />
+        <Boton
+          titulo="Cerrar"
+          variante="texto"
+          onPress={() => setHistorialVisible(false)}
+        />
+      </BottomSheet>
     </View>
   );
 }
@@ -344,23 +395,15 @@ const styles = StyleSheet.create({
     marginBottom: 4,
     textTransform: "capitalize",
   },
-  historialItem: { color: colors.textSecondary, fontSize: 14, paddingVertical: 2 },
-  historialHora: { color: colors.textMuted, fontSize: 12 },
-
-  emptyBox: { alignItems: "center", marginTop: 80, gap: 10 },
-  emptyTitulo: { fontSize: 18, fontWeight: "600", color: colors.textSecondary },
-  emptySubtitulo: { fontSize: 14, color: colors.textMuted },
-
-  card: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 12,
-    backgroundColor: colors.card,
-    borderRadius: 14,
-    padding: 14,
-    marginBottom: 10,
+  historialItem: {
+    color: colors.textSecondary,
+    fontSize: 14,
+    paddingVertical: 2,
   },
-  cardDone: { opacity: 0.6 },
+  historialHora: { color: colors.textMuted, fontSize: 12 },
+  vacioHistorial: { fontSize: 14, color: colors.textMuted },
+
+  fila: { padding: 14, paddingRight: 4, gap: 12 },
   iconBox: {
     width: 44,
     height: 44,
@@ -368,11 +411,10 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
   },
-  cardInfo: { flex: 1 },
   nombre: { fontSize: 15, fontWeight: "500", color: colors.text },
   completada: { textDecorationLine: "line-through", color: colors.textMuted },
   hora: { fontSize: 12, color: colors.textSecondary, marginTop: 3 },
-  deleteBtn: { padding: 10 },
+  accionBtn: { padding: 8 },
 
   fab: {
     position: "absolute",
@@ -389,32 +431,6 @@ const styles = StyleSheet.create({
   },
   fabText: { color: colors.background, fontWeight: "600", fontSize: 15 },
 
-  modalOverlay: {
-    flex: 1,
-    backgroundColor: "rgba(0,0,0,0.7)",
-    justifyContent: "flex-end",
-  },
-  modal: {
-    backgroundColor: colors.card,
-    borderTopLeftRadius: 24,
-    borderTopRightRadius: 24,
-    padding: 24,
-  },
-  modalTitulo: {
-    fontSize: 18,
-    fontWeight: "700",
-    color: colors.text,
-    marginBottom: 16,
-  },
-  input: {
-    backgroundColor: colors.input,
-    color: colors.text,
-    borderRadius: 10,
-    padding: 14,
-    marginBottom: 12,
-    fontSize: 15,
-  },
-  error: { color: colors.danger, fontSize: 13, marginTop: -6, marginBottom: 10 },
   label: {
     color: colors.textSecondary,
     fontSize: 13,
@@ -431,15 +447,4 @@ const styles = StyleSheet.create({
     gap: 10,
   },
   horaBtnText: { color: colors.text, fontSize: 16, fontWeight: "500" },
-  // categoriasGrid, categoriaBtn y categoriaBtnText
-  // fueron movidos a src/components/CategoriaGrid.jsx
-  boton: {
-    backgroundColor: colors.primary,
-    padding: 16,
-    borderRadius: 12,
-    alignItems: "center",
-    marginBottom: 10,
-  },
-  botonText: { color: colors.background, fontWeight: "600", fontSize: 15 },
-  cancelar: { color: colors.textSecondary, textAlign: "center", fontSize: 14 },
 });
