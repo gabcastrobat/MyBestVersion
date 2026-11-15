@@ -8,12 +8,13 @@ dispositivo con AsyncStorage.
 
 | Tab      | Qué hace |
 | -------- | -------- |
-| Home     | Progreso del día (rutinas + tareas), cuy motivador, gasto de hoy |
+| Hoy      | Progreso del día con cuy motivador, lista única de rutinas y tareas marcables, gasto de hoy |
+| Más      | Menú con Mi plan, Gym, Alarmas, Gastos y Perfil (las pestañas de la barra son Hoy, Rutinas, Tareas, Calendario y Más) |
 | Rutinas  | Rutinas diarias con notificación diaria y reset automático cada día |
 | Tareas   | Tareas con prioridad; al cambiar de día se limpian las ya completadas |
 | Gastos   | Gastos por Hoy / Semana / Mes con gráfico por categoría |
 | Perfil   | Nombre, email, teléfono y foto |
-| Mi plan  | Plan de mejora: máx. 3 hábitos ancla con versión mínima, victorias rápidas, cola de metas por área y revisión semanal (acceso desde Inicio) |
+| Mi plan  | Plan de mejora: máx. 3 hábitos ancla con versión mínima, victorias rápidas, cola de metas por área y revisión semanal (acceso desde Más) |
 
 ## Arquitectura
 
