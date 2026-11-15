@@ -1,5 +1,6 @@
 import { Ionicons } from "@expo/vector-icons";
 import { Image } from "expo-image";
+import * as Haptics from "expo-haptics";
 import { useRouter } from "expo-router";
 import {
   ScrollView,
@@ -67,8 +68,15 @@ function mensajeCuy(progreso, total) {
 export default function HomeScreen() {
   const router = useRouter();
   // Los hooks recargan al ganar foco y aplican el reset diario
-  const { rutinas } = useRutinas();
-  const { tareas } = useTareas();
+  const { rutinas, toggle: toggleRutina } = useRutinas();
+  const { tareas, toggle: toggleTarea } = useTareas();
+
+  // Marcar desde Inicio: vibración suave solo al completar
+  function marcar(item, toggleFn) {
+    if (!item.completada)
+      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => {});
+    toggleFn(item.id);
+  }
   const { perfil } = usePerfil();
   const { gastos } = useGastos();
 
@@ -202,7 +210,16 @@ export default function HomeScreen() {
           </View>
         ) : (
           tareasPendientes.slice(0, 4).map((t) => (
-            <View key={t.id} style={styles.tareaItem}>
+            <TouchableOpacity
+              key={t.id}
+              style={styles.tareaItem}
+              onPress={() => marcar(t, toggleTarea)}
+              activeOpacity={0.7}
+              accessibilityRole="checkbox"
+              accessibilityState={{ checked: t.completada }}
+              accessibilityLabel={`${t.nombre}, prioridad ${t.prioridad}`}
+            >
+              <View style={styles.check} />
               <View
                 style={[
                   styles.dot,
@@ -232,7 +249,7 @@ export default function HomeScreen() {
               >
                 {t.prioridad}
               </Text>
-            </View>
+            </TouchableOpacity>
           ))
         )}
       </View>
@@ -252,7 +269,15 @@ export default function HomeScreen() {
           </View>
         ) : (
           rutinas.slice(0, 4).map((r) => (
-            <View key={r.id} style={styles.rutinaItem}>
+            <TouchableOpacity
+              key={r.id}
+              style={styles.rutinaItem}
+              onPress={() => marcar(r, toggleRutina)}
+              activeOpacity={0.7}
+              accessibilityRole="checkbox"
+              accessibilityState={{ checked: r.completada }}
+              accessibilityLabel={`${r.nombre}, ${r.hora}`}
+            >
               <View style={[styles.check, r.completada && styles.checkDone]}>
                 {r.completada && <Text style={styles.checkMark}>✓</Text>}
               </View>
@@ -269,7 +294,7 @@ export default function HomeScreen() {
                   {r.hora} · {r.categoria}
                 </Text>
               </View>
-            </View>
+            </TouchableOpacity>
           ))
         )}
       </View>
@@ -377,7 +402,7 @@ const styles = StyleSheet.create({
     alignItems: "center",
     gap: 6,
   },
-  accesoLabel: { fontSize: 11, color: colors.textSecondary },
+  accesoLabel: { fontSize: 12, color: colors.textSecondary },
 
   seccion: { marginBottom: 24 },
   seccionHeader: {
@@ -428,7 +453,7 @@ const styles = StyleSheet.create({
     justifyContent: "center",
   },
   checkDone: { backgroundColor: colors.success, borderColor: colors.success },
-  checkMark: { color: "#000", fontSize: 12, fontWeight: "700" },
+  checkMark: { color: colors.onPrimary, fontSize: 12, fontWeight: "700" },
   rutinaInfo: { flex: 1 },
   rutinaNombre: { color: colors.text, fontSize: 14, fontWeight: "500" },
   rutinaHora: { color: colors.textSecondary, fontSize: 12, marginTop: 2 },

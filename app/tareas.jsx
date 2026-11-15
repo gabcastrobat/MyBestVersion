@@ -1,6 +1,8 @@
 import { Ionicons } from "@expo/vector-icons";
+import * as Haptics from "expo-haptics";
 import { useState } from "react";
 import {
+  Alert,
   FlatList,
   Modal,
   StyleSheet,
@@ -14,9 +16,9 @@ import { colors } from "../src/constants/colors.js";
 import { useTareas } from "../src/hooks/useTareas";
 
 const prioridadConfig = {
-  Alta: { color: "#ff4444", icon: "arrow-up-circle-outline" },
-  Media: { color: "#ffaa00", icon: "remove-circle-outline" },
-  Baja: { color: "#44ff88", icon: "arrow-down-circle-outline" },
+  Alta: { color: colors.danger, icon: "arrow-up-circle-outline" },
+  Media: { color: colors.warning, icon: "remove-circle-outline" },
+  Baja: { color: colors.success, icon: "arrow-down-circle-outline" },
 };
 
 export default function TareasScreen() {
@@ -59,6 +61,24 @@ export default function TareasScreen() {
     }
   }
 
+  function handleToggle(tarea) {
+    // Vibración suave solo al completar (no al desmarcar)
+    if (!tarea.completada)
+      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => {});
+    toggle(tarea.id);
+  }
+
+  function confirmarEliminar(tarea) {
+    Alert.alert("Eliminar tarea", `¿Borrar "${tarea.nombre}"?`, [
+      { text: "Cancelar", style: "cancel" },
+      {
+        text: "Eliminar",
+        style: "destructive",
+        onPress: () => eliminar(tarea.id),
+      },
+    ]);
+  }
+
   const pendientes = tareas.filter((t) => !t.completada);
   const hechas = tareas.filter((t) => t.completada);
 
@@ -94,8 +114,11 @@ export default function TareasScreen() {
           return (
             <TouchableOpacity
               style={[styles.card, item.completada && styles.cardDone]}
-              onPress={() => toggle(item.id)}
+              onPress={() => handleToggle(item)}
               activeOpacity={0.7}
+              accessibilityRole="checkbox"
+              accessibilityState={{ checked: item.completada }}
+              accessibilityLabel={`${item.nombre}, prioridad ${item.prioridad}`}
             >
               <View
                 style={[styles.prioridadBar, { backgroundColor: cfg.color }]}
@@ -110,7 +133,7 @@ export default function TareasScreen() {
                 ]}
               >
                 {item.completada && (
-                  <Ionicons name="checkmark" size={14} color="#000" />
+                  <Ionicons name="checkmark" size={14} color={colors.onPrimary} />
                 )}
               </View>
               <View style={styles.cardInfo}>
@@ -138,6 +161,9 @@ export default function TareasScreen() {
               <TouchableOpacity
                 onPress={() => abrirEdicion(item)}
                 style={styles.accionBtn}
+                hitSlop={{ top: 8, bottom: 8, left: 4, right: 4 }}
+                accessibilityRole="button"
+                accessibilityLabel={`Editar tarea ${item.nombre}`}
               >
                 <Ionicons
                   name="create-outline"
@@ -146,8 +172,11 @@ export default function TareasScreen() {
                 />
               </TouchableOpacity>
               <TouchableOpacity
-                onPress={() => eliminar(item.id)}
+                onPress={() => confirmarEliminar(item)}
                 style={styles.deleteBtn}
+                hitSlop={{ top: 8, bottom: 8, left: 4, right: 4 }}
+                accessibilityRole="button"
+                accessibilityLabel={`Eliminar tarea ${item.nombre}`}
               >
                 <Ionicons
                   name="trash-outline"
@@ -274,8 +303,8 @@ const styles = StyleSheet.create({
   completada: { textDecorationLine: "line-through", color: colors.textMuted },
   tagRow: { flexDirection: "row", alignItems: "center", gap: 4 },
   prioridadText: { fontSize: 12, fontWeight: "500" },
-  accionBtn: { paddingVertical: 14, paddingHorizontal: 6 },
-  deleteBtn: { padding: 14, paddingLeft: 6 },
+  accionBtn: { paddingVertical: 14, paddingHorizontal: 10 },
+  deleteBtn: { padding: 14, paddingLeft: 10 },
   error: { color: colors.danger, fontSize: 13, marginTop: -6, marginBottom: 10 },
 
   fab: {

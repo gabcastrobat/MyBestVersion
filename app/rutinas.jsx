@@ -1,7 +1,9 @@
 import { Ionicons } from "@expo/vector-icons";
 import DateTimePicker from "@react-native-community/datetimepicker";
+import * as Haptics from "expo-haptics";
 import { useState } from "react";
 import {
+  Alert,
   FlatList,
   Modal,
   StyleSheet,
@@ -49,18 +51,40 @@ export default function RutinasScreen() {
 
   // Marcar/desmarcar y luego refrescar rachas: el toggle escribe en el
   // historial, así que hay que volver a leerlo para ver la racha nueva.
-  async function handleToggle(id) {
-    await toggle(id);
+  async function handleToggle(rutina) {
+    if (!rutina.completada)
+      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => {});
+    await toggle(rutina.id);
     await recargar();
+  }
+
+  // Borrar una rutina también borra su recordatorio y su racha: confirmamos.
+  function confirmarEliminar(rutina) {
+    Alert.alert(
+      "Eliminar rutina",
+      `¿Borrar "${rutina.nombre}"? También se cancela su recordatorio.`,
+      [
+        { text: "Cancelar", style: "cancel" },
+        {
+          text: "Eliminar",
+          style: "destructive",
+          onPress: () => eliminar(rutina.id),
+        },
+      ],
+    );
   }
   const [modalVisible, setModalVisible] = useState(false);
   const [nombre, setNombre] = useState("");
   const [categoria, setCategoria] = useState("General");
   const [hora, setHora] = useState(new Date());
   const [showPicker, setShowPicker] = useState(false);
+  const [error, setError] = useState("");
 
   async function handleAgregar() {
-    if (!nombre.trim()) return;
+    if (!nombre.trim()) {
+      setError("Escribe un nombre para la rutina");
+      return;
+    }
     await agregar({ nombre, hora: formatHora(hora), categoria });
     setNombre("");
     setCategoria("General");
@@ -119,8 +143,11 @@ export default function RutinasScreen() {
           return (
             <TouchableOpacity
               style={[styles.card, item.completada && styles.cardDone]}
-              onPress={() => handleToggle(item.id)}
+              onPress={() => handleToggle(item)}
               activeOpacity={0.7}
+              accessibilityRole="checkbox"
+              accessibilityState={{ checked: item.completada }}
+              accessibilityLabel={`${item.nombre}, ${item.hora}`}
             >
               <View
                 style={[
@@ -158,8 +185,11 @@ export default function RutinasScreen() {
                 />
               )}
               <TouchableOpacity
-                onPress={() => eliminar(item.id)}
+                onPress={() => confirmarEliminar(item)}
                 style={styles.deleteBtn}
+                hitSlop={{ top: 12, bottom: 12, left: 8, right: 8 }}
+                accessibilityRole="button"
+                accessibilityLabel={`Eliminar rutina ${item.nombre}`}
               >
                 <Ionicons
                   name="trash-outline"
@@ -174,7 +204,10 @@ export default function RutinasScreen() {
 
       <TouchableOpacity
         style={styles.fab}
-        onPress={() => setModalVisible(true)}
+        onPress={() => {
+          setError("");
+          setModalVisible(true);
+        }}
       >
         <Ionicons name="add" size={22} color={colors.background} />
         <Text style={styles.fabText}>Nueva rutina</Text>
@@ -190,8 +223,12 @@ export default function RutinasScreen() {
               placeholder="Nombre (ej: Ejercicio)"
               placeholderTextColor={colors.textMuted}
               value={nombre}
-              onChangeText={setNombre}
+              onChangeText={(t) => {
+                setNombre(t);
+                if (error) setError("");
+              }}
             />
+            {error ? <Text style={styles.error}>{error}</Text> : null}
 
             <Text style={styles.label}>Hora</Text>
             <TouchableOpacity
@@ -335,7 +372,7 @@ const styles = StyleSheet.create({
   nombre: { fontSize: 15, fontWeight: "500", color: colors.text },
   completada: { textDecorationLine: "line-through", color: colors.textMuted },
   hora: { fontSize: 12, color: colors.textSecondary, marginTop: 3 },
-  deleteBtn: { padding: 4 },
+  deleteBtn: { padding: 10 },
 
   fab: {
     position: "absolute",
@@ -377,6 +414,7 @@ const styles = StyleSheet.create({
     marginBottom: 12,
     fontSize: 15,
   },
+  error: { color: colors.danger, fontSize: 13, marginTop: -6, marginBottom: 10 },
   label: {
     color: colors.textSecondary,
     fontSize: 13,

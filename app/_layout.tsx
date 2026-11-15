@@ -50,7 +50,7 @@ export default function RootLayout() {
             borderTopColor: colors.border,
           },
           // Con 6 pestañas el texto por defecto se corta en pantallas angostas
-          tabBarLabelStyle: { fontSize: 10 },
+          tabBarLabelStyle: { fontSize: 11 },
           tabBarActiveTintColor: colors.text,
           tabBarInactiveTintColor: colors.textMuted,
           headerStyle: { backgroundColor: colors.background },
