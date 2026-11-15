@@ -32,7 +32,9 @@ export async function getTareas() {
 export const saveTarea = enSerie(async (tarea) => {
   const tareas = await getTareas();
   const nueva = {
-    id: Date.now().toString(),
+    // Tiempo + sufijo aleatorio: dos tareas creadas en el mismo milisegundo
+    // ya no comparten id (con id repetido, marcar una marcaba las dos).
+    id: `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
     nombre: tarea.nombre.trim(),
     prioridad: tarea.prioridad,
     completada: false,

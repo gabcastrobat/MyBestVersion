@@ -300,7 +300,11 @@ export default function HabitosScreen() {
           <EstadoVacio
             icono="repeat-outline"
             titulo="Sin hábitos aún"
-            subtitulo="Agrega tu primer hábito, o escoge uno de la cola"
+            subtitulo={
+              plan.cola.length > 0
+                ? "Agrega tu primer hábito, o escoge uno de la cola"
+                : "Toca “Nuevo hábito” para agregar el primero"
+            }
           />
         ) : (
           delDia.map((h) => (
@@ -344,9 +348,11 @@ export default function HabitosScreen() {
           <Text style={styles.contador}>{plan.cola.length}</Text>
         </View>
         <Text style={styles.ayuda}>
-          {cupoLibre
-            ? "Tienes un cupo libre: toca una meta para volverla hábito ancla."
-            : "Esperan su turno. Toca ⋯ para borrar una."}
+          {plan.cola.length === 0
+            ? "Guarda aquí las metas que quieres empezar más adelante, para no cargar con todo a la vez."
+            : cupoLibre
+              ? "Tienes un cupo libre: toca una meta para volverla hábito ancla."
+              : "Esperan su turno. Toca ⋯ para borrar una."}
         </Text>
         {Object.entries(AREAS).map(([nombreArea, cfg]) => {
           const metas = plan.cola.filter((c) => c.area === nombreArea);

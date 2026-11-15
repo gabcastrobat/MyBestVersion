@@ -121,7 +121,8 @@ export default function HoyScreen() {
   const hora = new Date().getHours();
   const saludo =
     hora < 12 ? "Buenos días" : hora < 18 ? "Buenas tardes" : "Buenas noches";
-  const nombre = perfil.nombre ? perfil.nombre.split(" ")[0] : "Gabi";
+  // Primer nombre del perfil. Sin perfil todavía: saludo genérico e icono.
+  const nombre = perfil.nombre?.trim().split(" ")[0] ?? "";
   const inicial = nombre.charAt(0).toUpperCase();
 
   return (
@@ -134,7 +135,7 @@ export default function HoyScreen() {
       <View style={styles.header}>
         <View>
           <Text style={styles.saludo}>{saludo}</Text>
-          <Text style={styles.nombre}>{nombre} 👋</Text>
+          <Text style={styles.nombre}>{nombre || "¡Hola!"} 👋</Text>
         </View>
         <TouchableOpacity
           style={styles.avatar}
@@ -142,7 +143,11 @@ export default function HoyScreen() {
           accessibilityRole="button"
           accessibilityLabel="Abrir perfil"
         >
-          <Text style={styles.avatarText}>{inicial}</Text>
+          {inicial ? (
+            <Text style={styles.avatarText}>{inicial}</Text>
+          ) : (
+            <Ionicons name="person-outline" size={20} color={colors.text} />
+          )}
         </TouchableOpacity>
       </View>
 

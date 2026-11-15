@@ -125,7 +125,11 @@ export default function PlanScreen() {
             {victoriasHechas}/{plan.victorias.length}
           </Text>
         </View>
-        <Text style={styles.ayuda}>Cosas de una sola vez. Táchalas ya.</Text>
+        <Text style={styles.ayuda}>
+          {plan.victorias.length === 0
+            ? "Cosas de una sola vez que puedes resolver hoy (ej: pedir una cita, ordenar el escritorio). Agrega la primera."
+            : "Cosas de una sola vez. Táchalas ya."}
+        </Text>
         {plan.victorias.map((v) => (
           <View key={v.id} style={styles.fila}>
             <TouchableOpacity

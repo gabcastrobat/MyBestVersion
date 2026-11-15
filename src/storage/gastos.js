@@ -15,7 +15,8 @@ export async function getGastos() {
 export const saveGasto = enSerie(async (gasto) => {
   const gastos = await getGastos();
   const nuevo = {
-    id: Date.now().toString(),
+    // Tiempo + sufijo aleatorio, para que dos gastos nunca compartan id
+    id: `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
     descripcion: gasto.descripcion,
     monto: parseFloat(gasto.monto),
     categoria: gasto.categoria,
