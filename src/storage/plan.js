@@ -6,6 +6,11 @@ import {
   quitarActividadDeHoy,
   registrarActividad,
 } from "./actividades";
+import { crearCola } from "../utils/cola";
+
+// Todas las escrituras de este archivo pasan por la misma cola: así dos
+// cambios casi simultáneos no se pisan (ver utils/cola.js).
+const enSerie = crearCola();
 
 // Plan de mejora + hábitos: todo se guarda en UNA sola clave porque las partes
 // dependen entre sí (promover algo de la cola crea un hábito y lo saca de la
@@ -201,7 +206,7 @@ export function historialPorDia(plan, dias = 30) {
 
 // Marca el hábito HOY. tipo = "completo" | "minimo".
 // Si ya estaba marcado con ese mismo tipo, lo desmarca (como un toggle).
-export async function marcarHabitoHoy(id, tipo) {
+export const marcarHabitoHoy = enSerie(async (id, tipo) => {
   const plan = await getPlan();
   const fecha = hoy();
   const habito = plan.habitos.find((h) => h.id === id);
@@ -222,11 +227,11 @@ export async function marcarHabitoHoy(id, tipo) {
   else await registrarActividad("habito", item);
 
   return plan;
-}
+});
 
 // Crea un hábito normal (no ancla). `datos` = { nombre, categoria?, hora?,
 // minimo?, metaSemanal? }. Con `hora` el hook programa el recordatorio.
-export async function crearHabito(datos) {
+export const crearHabito = enSerie(async (datos) => {
   const nombre = datos.nombre?.trim();
   if (!nombre) throw new Error("El nombre del hábito no puede estar vacío");
   const plan = await getPlan();
@@ -243,11 +248,11 @@ export async function crearHabito(datos) {
   });
   await guardar(plan);
   return plan;
-}
+});
 
 // Edita nombre, categoría, hora, mínimo y meta semanal. No toca el historial.
 // `hora: null` / `minimo: ""` los quitan.
-export async function actualizarHabito(id, cambios) {
+export const actualizarHabito = enSerie(async (id, cambios) => {
   const nombre = cambios.nombre?.trim();
   if (cambios.nombre !== undefined && !nombre) {
     throw new Error("El nombre del hábito no puede estar vacío");
@@ -267,28 +272,28 @@ export async function actualizarHabito(id, cambios) {
   );
   await guardar(plan);
   return plan;
-}
+});
 
-export async function eliminarHabito(id) {
+export const eliminarHabito = enSerie(async (id) => {
   const plan = await getPlan();
   plan.habitos = plan.habitos.filter((h) => h.id !== id);
   await guardar(plan);
   return plan;
-}
+});
 
 // "Ya me sale solo": deja de ocupar uno de los 3 cupos de ancla
-export async function marcarAutomatico(id) {
+export const marcarAutomatico = enSerie(async (id) => {
   const plan = await getPlan();
   plan.habitos = plan.habitos.map((h) =>
     h.id === id ? { ...h, estado: "automatico" } : h,
   );
   await guardar(plan);
   return plan;
-}
+});
 
 // Convierte un hábito normal en ancla. Lanza error si ya hay MAX_ANCLAS.
 // Las ancla necesitan versión mínima: si no tenía, se le pone una por defecto.
-export async function hacerAncla(id) {
+export const hacerAncla = enSerie(async (id) => {
   const plan = await getPlan();
   if (anclasActivas(plan).length >= MAX_ANCLAS) {
     throw new Error(
@@ -307,21 +312,21 @@ export async function hacerAncla(id) {
   );
   await guardar(plan);
   return plan;
-}
+});
 
 // Deja de ser ancla (libera el cupo) pero sigue como hábito normal
-export async function quitarAncla(id) {
+export const quitarAncla = enSerie(async (id) => {
   const plan = await getPlan();
   plan.habitos = plan.habitos.map((h) =>
     h.id === id ? { ...h, ancla: false, estado: "activo" } : h,
   );
   await guardar(plan);
   return plan;
-}
+});
 
 // Saca un hábito y lo devuelve al final de la cola.
 // La cola solo conoce las 5 áreas: si la categoría no es un área, va a "Atención".
-export async function devolverACola(id) {
+export const devolverACola = enSerie(async (id) => {
   const plan = await getPlan();
   const habito = plan.habitos.find((h) => h.id === id);
   if (!habito) return plan;
@@ -333,11 +338,11 @@ export async function devolverACola(id) {
   });
   await guardar(plan);
   return plan;
-}
+});
 
 // Convierte una meta de la cola en hábito ancla.
 // Lanza un error si ya hay MAX_ANCLAS activos: esa es la regla de oro.
-export async function promoverAAncla(colaId, { minimo, metaSemanal }) {
+export const promoverAAncla = enSerie(async (colaId, { minimo, metaSemanal }) => {
   const plan = await getPlan();
   if (anclasActivas(plan).length >= MAX_ANCLAS) {
     throw new Error(
@@ -361,52 +366,52 @@ export async function promoverAAncla(colaId, { minimo, metaSemanal }) {
   });
   await guardar(plan);
   return plan;
-}
+});
 
 // ─── Cola y victorias rápidas ───────────────────────────────────────────────
 
-export async function agregarACola(nombre, area) {
+export const agregarACola = enSerie(async (nombre, area) => {
   const plan = await getPlan();
   plan.cola.push({ id: nuevoId(), nombre: nombre.trim(), area });
   await guardar(plan);
   return plan;
-}
+});
 
-export async function quitarDeCola(id) {
+export const quitarDeCola = enSerie(async (id) => {
   const plan = await getPlan();
   plan.cola = plan.cola.filter((c) => c.id !== id);
   await guardar(plan);
   return plan;
-}
+});
 
-export async function agregarVictoria(nombre) {
+export const agregarVictoria = enSerie(async (nombre) => {
   const plan = await getPlan();
   plan.victorias.push({ id: nuevoId(), nombre: nombre.trim(), hecha: false });
   await guardar(plan);
   return plan;
-}
+});
 
-export async function toggleVictoria(id) {
+export const toggleVictoria = enSerie(async (id) => {
   const plan = await getPlan();
   plan.victorias = plan.victorias.map((v) =>
     v.id === id ? { ...v, hecha: !v.hecha } : v,
   );
   await guardar(plan);
   return plan;
-}
+});
 
-export async function eliminarVictoria(id) {
+export const eliminarVictoria = enSerie(async (id) => {
   const plan = await getPlan();
   plan.victorias = plan.victorias.filter((v) => v.id !== id);
   await guardar(plan);
   return plan;
-}
+});
 
 // ─── Revisión del domingo ───────────────────────────────────────────────────
 
 // Guarda (o reemplaza) la revisión de la semana actual, con una "foto"
 // de cómo te fue en cada hábito ancla activo.
-export async function guardarRevision(nota) {
+export const guardarRevision = enSerie(async (nota) => {
   const plan = await getPlan();
   const semana = inicioSemana();
   const resumen = anclasActivas(plan).map((h) => ({
@@ -426,4 +431,4 @@ export async function guardarRevision(nota) {
   ];
   await guardar(plan);
   return plan;
-}
+});

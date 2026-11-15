@@ -1,5 +1,10 @@
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { fechaLocal, hoy } from "../utils/fechas";
+import { crearCola } from "../utils/cola";
+
+// Todas las escrituras de este archivo pasan por la misma cola: así dos
+// cambios casi simultáneos no se pisan (ver utils/cola.js).
+const enSerie = crearCola();
 
 // Historial de actividades: el "diario" de todo lo que completas.
 //
@@ -71,7 +76,7 @@ export async function getHistorial(tipo, limite = 50) {
 }
 
 // Registra que se completó algo. `item` es la rutina o tarea completada.
-export async function registrarActividad(tipo, item) {
+export const registrarActividad = enSerie(async (tipo, item) => {
   const todas = await leerTodas();
   const ahora = new Date();
   const fecha = fechaLocal(ahora);
@@ -95,11 +100,11 @@ export async function registrarActividad(tipo, item) {
     deleted: false,
   });
   await guardarTodas(todas);
-}
+});
 
 // Deshace el registro de HOY (cuando desmarcas algo por error).
 // Los días anteriores no se tocan: el historial es historial.
-export async function quitarActividadDeHoy(tipo, refId) {
+export const quitarActividadDeHoy = enSerie(async (tipo, refId) => {
   const todas = await leerTodas();
   const fecha = hoy();
   const ahora = new Date().toISOString();
@@ -110,4 +115,4 @@ export async function quitarActividadDeHoy(tipo, refId) {
       : a,
   );
   await guardarTodas(actualizadas);
-}
+});
